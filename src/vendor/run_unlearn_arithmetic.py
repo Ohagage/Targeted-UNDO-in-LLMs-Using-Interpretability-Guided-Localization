@@ -8,6 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.utils.paths import CACHE_DIR, DATASET_DIR, MODEL_DIR
 from src.utils.validation_functions import get_arithmetic_eval_fn
 from src.utils.parallel_launch import launch_in_parallel_one_per_gpu, get_parallel_launch_wrapper
+import torch
 
 WANDB_API_KEY_PATH = "tokens/wandb_token.txt"
 
@@ -19,7 +20,8 @@ LR_RANGES = {
 }
 
 # Base setups to run - will be expanded with learning rates
-BASE_SETUPS = ["gemma-2-0.3B_MaxEnt", "gemma-2-0.3B_RMU"]
+# We use gemma-2-0.1B, and only use MaxEnt unlearning method
+BASE_SETUPS = ["gemma-2-0.1B_MaxEnt"]
 
 try:
     with open(WANDB_API_KEY_PATH, "r", encoding="utf-8") as f:
@@ -65,38 +67,38 @@ base_setups = {
         'path_local_record': f"{MODEL_DIR}/local_records/unlearned_models/GradDiff/gemma-2-0.3B_all_arithmetic+eng.txt",
     },
 
-    "gemma-2-0.3B_MaxEnt": {
-        'model_name'       : f"{MODEL_DIR}/pretrained_models/gemma-2-0.3B_all_arithmetic+eng/final_model",
+    "gemma-2-0.1B_MaxEnt": {
+        'model_name': f"{MODEL_DIR}/pretrained_models/gemma-2-0.1B_all_arithmetic+eng/final_model",
         'forget_train_file': f"{DATASET_DIR}/pretrain/train_multiplication_division.jsonl",
         'retain_train_file': f"{DATASET_DIR}/pretrain/train_addition_subtraction.jsonl",
         'eng_valid_file'   : f"{DATASET_DIR}/pretrain/valid_eng.jsonl",
-        'output_dir'       : f"{MODEL_DIR}/unlearned_models/MaxEnt/gemma-2-0.3B_all_arithmetic+eng",
+        'output_dir'       : f"{MODEL_DIR}/unlearned_models/MaxEnt/gemma-2-0.1B_all_arithmetic+eng",
         'cache_dir'        : CACHE_DIR,
         'dataset_cache_dir': CACHE_DIR,
 
         'use_retain'                  : True,
         'seed'                        : 42,
-        'device'                      : "cuda",
-        'batch_size'                  : 40,
-        'gradient_accumulation_steps' : 1,
+        'device'                      : "cuda",  # CUDA for SLURM
+        'batch_size'                  : 4,  # Small batch for RTX 2080 Ti (11GB)
+        'gradient_accumulation_steps' : 10,  # Effective batch = 40
         'epochs'                      : 1,
-        'learning_rate'               : "TBD",   
-        'max_steps'                   : 10,             
+        'learning_rate'               : "TBD",
+        'max_steps'                   : 10,  # Original value
         'num_warmup_steps'            : 0,
-        'validation_steps'            : 1,
-        'save_checkpoint_steps'       : -1,
-        'scheduler_type'              : "cosine",  
-        'min_lr'                      : 4e-5,        
-        'weight_decay'                : 0.0,         
-        'gradient_clipping_threshold' : 1.0, 
+        'validation_steps'            : 1,  # Original value
+        'save_checkpoint_steps'       : -1,  # Original value (no intermediate checkpoints)
+        'scheduler_type'              : "cosine",
+        'min_lr'                      : 4e-5,
+        'weight_decay'                : 0.0,
+        'gradient_clipping_threshold' : 1.0,
         'max_length'                  : 256,
 
         'use_wandb'        : True,
-        'wandb_project'    : "gemma-2-0.3B_all_arithmetic+eng_unlearn_MaxEnt",
+        'wandb_project'    : "gemma-2-0.1B_all_arithmetic+eng_unlearn_MaxEnt",
         'wandb_run_name'   : None,
         'wandb_api_key'    : api_key,
         'use_local_record' : True,
-        'path_local_record': f"{MODEL_DIR}/local_records/unlearned_models/MaxEnt/gemma-2-0.3B_all_arithmetic+eng.txt",
+        'path_local_record': f"{MODEL_DIR}/local_records/unlearned_models/MaxEnt/gemma-2-0.1B_all_arithmetic+eng.txt",
     },
     "gemma-2-0.3B_RMU": {
         'model_name'       : f"{MODEL_DIR}/pretrained_models/gemma-2-0.3B_all_arithmetic+eng/final_model",
@@ -303,10 +305,24 @@ if __name__ == "__main__":
     print(f"Running {len(SETUPS_TO_RUN)} experiments with learning rate search:")
     for setup_id in SETUPS_TO_RUN:
         print(f"  - {setup_id} (LR: {setups[setup_id]['learning_rate']:.1e})")
-    
-    # Create list of the setups (arguments for run_experiment) for all the experiments we want to run 
-    experiments = [(setup_id,) for setup_id in SETUPS_TO_RUN]
-    # Gets a wrapper function compatable with the parallel launch function
-    parallel_fn = get_parallel_launch_wrapper(launch_unlearning_run)
-    # calls run_experiment in parallel on a separate gpu for each experiment setup when a gpu is free
-    launch_in_parallel_one_per_gpu(experiment_list=experiments, experiment_fn=parallel_fn)
+
+    # Check if CUDA is available for parallel GPU execution
+    if torch.cuda.is_available():
+        # Create list of the setups (arguments for run_experiment) for all the experiments we want to run
+        experiments = [(setup_id,) for setup_id in SETUPS_TO_RUN]
+        # Gets a wrapper function compatible with the parallel launch function
+        parallel_fn = get_parallel_launch_wrapper(launch_unlearning_run)
+        # calls run_experiment in parallel on a separate gpu for each experiment setup when a gpu is free
+        launch_in_parallel_one_per_gpu(experiment_list=experiments, experiment_fn=parallel_fn)
+    else:
+        # Single device execution (Mac MPS or CPU)
+        print("\nNo CUDA GPUs found. Running sequentially on MPS/CPU...")
+        for setup_id in SETUPS_TO_RUN:
+            print(f"\n{'=' * 60}")
+            print(f"Starting: {setup_id}")
+            print(f"{'=' * 60}")
+            launch_unlearning_run(setup_id)
+
+
+
+
