@@ -62,7 +62,9 @@ def partial_distill(
     overwrite_ok,
     noise_alpha=0.0,
     noise_beta=0.0,
-    shrink_perturb_repeat=False,  
+    shrink_perturb_repeat=False,
+    noise_mask=None,
+    mask_type=None,
 ):
     """
     Distillation script using Accelerate. Replaces standard CE with forward KL (KL(teacher||student)).
@@ -75,9 +77,14 @@ def partial_distill(
     # ------------------------------------------------------------
     print_message = accelerator.is_main_process
 
-    distill_args = {**locals()}
-    print_acc(f"[serum_original.py] Initiated distillation with:\n{distill_args}", print_message)
-    
+    excluded_keys = ['noise_mask', 'eval_fn', 'stop_cond_fn', 'accelerator', 'teacher_model', 'student_model']
+    distill_args = {k: v for k, v in locals().items() if k not in excluded_keys}
+
+    # Add simple metadata instead of the whole mask object
+    distill_args['has_noise_mask'] = noise_mask is not None
+    distill_args['noise_alpha'] = noise_alpha
+    distill_args['mask_type'] = mask_type if noise_mask is not None else 'none'
+
     custom_makedirs(output_dir, exist_ok=overwrite_ok)
 
     random.seed(seed)
@@ -126,7 +133,7 @@ def partial_distill(
     # ------------------------------------------------------------
     if noise_alpha != 0.0:
         print_acc(f"[serum_original.py] Applying one-time shrink+perturb: noise={noise_alpha}", print_message)
-        do_corruption(student_model, noise_alpha, noise_beta)
+        do_corruption(student_model, noise_alpha, noise_beta, noise_mask=noise_mask)
 
 
 
@@ -225,7 +232,7 @@ def partial_distill(
     # Get initial teacher eval dict which will be use for stop cond
     # ------------------------------------------------------------
     print_acc("[serum_original.py] Running evaluation ...", print_message)
-    teacher_eval_dict = eval_fn(teacher_model, print_results=True) 
+    teacher_eval_dict = eval_fn(teacher_model, print_results=True)
     teacher_eval_dict["train/step"] = 0
     teacher_eval_dict["train/tokens_seen"] = 0
     teacher_eval_dict["validation_stage"] = "teacher_baseline"
@@ -251,7 +258,7 @@ def partial_distill(
 
         if shrink_perturb_repeat and noise_alpha != 0.0:
             print_acc(f"[serum_original.py] Re-applying shrink+perturb before epoch {epoch+1}", print_message)
-            do_corruption(student_model, noise_alpha, noise_beta)
+            do_corruption(student_model, noise_alpha, noise_beta, noise_mask=noise_mask)
 
         student_model.train()
         micro_kd_sum = 0.0
@@ -379,27 +386,53 @@ def partial_distill(
 # The do_corruption function is used for "noise-and-decay"
 ##############################################################
 
-def do_corruption(model, noise_alpha, noise_beta = 0.1, seed = 42):
+def do_corruption(model, noise_alpha, noise_beta = 0.1, seed = 42, noise_mask = None):
     # Loop through all parameters and add random noise scaled by scale factor
     assert 0 <= noise_alpha <= 1
     assert 0 <= noise_beta <= 1
 
-    for param in model.parameters():
-        if param.requires_grad:
-            corruption = torch.zeros_like(param.data)
-            if len(param.data.shape) == 2:
-                noise = torch.nn.init.xavier_uniform_(
-                    torch.empty_like(param.data)
-                )
-            elif len(param.data.shape) == 1:
-                noise = torch.zeros_like(param.data)
-            else:
-                raise RuntimeError(
-                    f"Unsupported parameter shape: {param.data.shape}"
-                )
-            corruption = noise_beta * noise
+    print(f"\nDEBUG: Starting do_corruption. Noise mask is None: {noise_mask is None}")
 
+    # Get the first parameter name to inspect it
+    first_param_name, _ = next(model.named_parameters())
+    print(f"DEBUG: First parameter name in model: '{first_param_name}'")
+
+    if noise_mask is not None:
+        first_mask_key = list(noise_mask.keys())[0]
+        clean_first_name = first_param_name.replace("module.", "").replace("student_model.", "")
+        print(f"DEBUG: First key in noise_mask:      '{first_mask_key}'")
+        print(f"DEBUG: Cleaned first parameter:      '{clean_first_name}'")
+
+        if clean_first_name in noise_mask:
+            print("DEBUG: ✅ MATCH FOUND for the first parameter!")
+        else:
+            print("DEBUG: ❌ NO MATCH for the first parameter (might be an excluded layer like embed/norm).")
+
+    count_masked = 0
+    for name, param in model.named_parameters():
+        if not param.requires_grad:
+            continue
+
+        clean_name = name.replace("module.", "").replace("student_model.", "")
+
+        if len(param.data.shape) >= 2:
+            noise = torch.nn.init.xavier_uniform_(torch.empty_like(param.data))
+        elif len(param.data.shape) == 1:
+            noise = torch.zeros_like(param.data)
+        else:
+            continue
+
+        corruption = noise_beta * noise
+
+        if noise_mask is not None and clean_name in noise_mask:
+            count_masked += 1
+            m = noise_mask[clean_name].to(param.device)
+            effective_alpha = noise_alpha * m
+            param.data = (1 - effective_alpha) * param.data + effective_alpha * corruption
+
+        elif noise_mask is None:
             param.data = (1 - noise_alpha) * param.data + noise_alpha * corruption
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model.to(device)
+    print(f"DEBUG: Applied mask to {count_masked} parameters out of {len(list(model.named_parameters()))}")
