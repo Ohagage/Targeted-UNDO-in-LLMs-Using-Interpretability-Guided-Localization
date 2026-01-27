@@ -13,60 +13,30 @@ from utils.parallel_launch import launch_in_parallel_one_per_gpu, get_parallel_l
 
 
 SETUPS_TO_RUN = [
-    "gemma-2-0.3B_all_data" # "gemma-2-0.3B_all_data_perturb", "gemma-2-0.3B_train_only_forget", "gemma-2-0.3B_all_data"
+    "gemma-2-0.1B_all_data" # "gemma-2-0.1B_all_data_perturb", "gemma-2-0.1B_train_only_forget", "gemma-2-0.1B_all_data"
 ]
 
 MODELS_TO_RUN = [
-    #'pretrained_models/gemma-2-0.3B_addition_subtraction+eng', # Pretrain Pure
-    #'pretrained_models/gemma-2-0.3B_all_arithmetic+eng', # Pretrained Base
-    #'unlearned_models/GradDiff/gemma-2-0.3B_all_arithmetic+eng_lr_8.0e-06', # Unlearned GradDiff
-    #'unlearned_models/RMU/gemma-2-0.3B_all_arithmetic+eng_lr_6.0e-06', # Unlearned RMU
-    #'unlearned_models/MaxEnt/gemma-2-0.3B_all_arithmetic+eng_lr_9.0e-05', # Unlearned MaxEnt
+    # --- Baselines ---
+    'pretrained_models/gemma-2-0.1B_all_arithmetic+eng',  # Pretrained Base
+    'pretrained_models/gemma-2-0.1B_addition_subtraction+eng', # Oracle Pretrained Base
+    'unlearned_models/MaxEnt/gemma-2-0.1B_all_arithmetic+eng_lr_7.0e-05', # Unlearned MaxEnt
 
-    #'distilled_models/pure/gemma-2-0.3B_all_arithmetic+eng', # Distilled Pure (Oracle)
-    #'distilled_models/pure_from_base/gemma-2-0.3B_all_arithmetic+eng', # Distilled Impure (Oracle)
-    #'distilled_models/base/gemma-2-0.3B_all_arithmetic+eng', # Distilled Base
-    #'distilled_models/GradDiff/gemma-2-0.3B_all_arithmetic+eng', # Distilled GradDiff
-    #'distilled_models/RMU/gemma-2-0.3B_all_arithmetic+eng', # Distilled RMU
-    # 'distilled_models/MaxEnt/gemma-2-0.3B_all_arithmetic+eng', # Distilled MaxEnt
+    # --- Global Noise Models ---
+    'partial_distill_models_arith/gemma-2-0.1B_MaxEnt_lr_7.0e-05-partial_distill-alpha_0.1-beta_0.1',
+    'partial_distill_models_arith/gemma-2-0.1B_MaxEnt_lr_7.0e-05-partial_distill-alpha_0.3-beta_0.1',
+    'partial_distill_models_arith/gemma-2-0.1B_MaxEnt_lr_7.0e-05-partial_distill-alpha_0.6-beta_0.1',
+    'partial_distill_models_arith/gemma-2-0.1B_MaxEnt_lr_7.0e-05-partial_distill-alpha_0.9-beta_0.1',
 
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.1-beta_0.1-seed_123',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.2-beta_0.1-seed_123',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.3-beta_0.1-seed_123',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.4-beta_0.1-seed_123',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.5-beta_0.1-seed_123',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.6-beta_0.1-seed_123',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.7-beta_0.1-seed_123',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.8-beta_0.1-seed_123',  # partial_distill
 
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.1-beta_0.1-seed_111-fixed_steps_500',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.2-beta_0.1-seed_111-fixed_steps_500',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.3-beta_0.1-seed_111-fixed_steps_500',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.4-beta_0.1-seed_111-fixed_steps_500',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.5-beta_0.1-seed_111-fixed_steps_500',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.6-beta_0.1-seed_111-fixed_steps_500',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.7-beta_0.1-seed_111-fixed_steps_500',  # partial_distill
-    #'partial_distill_models_arith/gemma-2-0.3B_MaxEnt-arithmetic-partial_distill-alpha_0.8-beta_0.1-seed_111-fixed_steps_500',  # partial_distill
-
-    #'unlearned_models/MaxEnt_RepNoise/gemma-2-0.3B_all_arithmetic+eng_a0.1_b0.001_lr_8.0e-05',
-    #'unlearned_models/MaxEnt_RepNoise/gemma-2-0.3B_all_arithmetic+eng_a0.1_b0.0001_lr_8.0e-05',
-    #'unlearned_models/MaxEnt_RepNoise/gemma-2-0.3B_all_arithmetic+eng_a0.5_b0.1_lr_8.0e-05',
-    #'unlearned_models/MaxEnt_RepNoise/gemma-2-0.3B_all_arithmetic+eng_a0.5_b0.01_lr_8.0e-05',
-    #'unlearned_models/MaxEnt_RepNoise/gemma-2-0.3B_all_arithmetic+eng_a1.0_b0.1_lr_8.0e-05',
-    #'unlearned_models/MaxEnt_RepNoise/gemma-2-0.3B_all_arithmetic+eng_a1.0_b1.0_lr_8.0e-05',
-    #'unlearned_models/MaxEnt_RepNoise/gemma-2-0.3B_all_arithmetic+eng_a2.0_b2.0_lr_8.0e-05',
-    #'unlearned_models/MaxEnt_RepNoise/gemma-2-0.3B_all_arithmetic+eng_a4.0_b4.0_lr_8.0e-05',
-
-    'unlearned_models/RMU_SAM/gemma-2-0.3B_all_arithmetic+eng_rho0.01_lr_1.0e-05',
-    'unlearned_models/RMU_SAM/gemma-2-0.3B_all_arithmetic+eng_rho0.01_lr_2.0e-05',
-    'unlearned_models/RMU_SAM/gemma-2-0.3B_all_arithmetic+eng_rho0.01_lr_3.0e-05',
-    'unlearned_models/RMU_SAM/gemma-2-0.3B_all_arithmetic+eng_rho0.01_lr_4.0e-05',
-    'unlearned_models/RMU_SAM/gemma-2-0.3B_all_arithmetic+eng_rho0.01_lr_6.0e-06',
-    'unlearned_models/RMU_SAM/gemma-2-0.3B_all_arithmetic+eng_rho0.01_lr_7.0e-06',
-    'unlearned_models/RMU_SAM/gemma-2-0.3B_all_arithmetic+eng_rho0.01_lr_8.0e-06',
-    'unlearned_models/RMU_SAM/gemma-2-0.3B_all_arithmetic+eng_rho0.01_lr_9.0e-06',
-    
+    # --- Our Localized-UNDO Models (Binary Mask) ---
+    'partial_distill_models_arith/gemma-2-0.1B_MaxEnt_lr_7.0e-05-partial_distill-alpha_0.1-beta_0.1-mask_binary',
+    'partial_distill_models_arith/gemma-2-0.1B_MaxEnt_lr_7.0e-05-partial_distill-alpha_0.3-beta_0.1-mask_binary',
+    'partial_distill_models_arith/gemma-2-0.1B_MaxEnt_lr_7.0e-05-partial_distill-alpha_0.6-beta_0.1-mask_binary',
+    'partial_distill_models_arith/gemma-2-0.1B_MaxEnt_lr_7.0e-05-partial_distill-alpha_0.9-beta_0.1-mask_binary',
+    'partial_distill_models_arith/gemma-2-0.1B_MaxEnt_lr_7.0e-05-partial_distill-alpha_1.0-beta_0.1-mask_binary',
 ]
+
 '''
 for pareto plot
 '''
@@ -80,7 +50,7 @@ for pareto plot
 #        # Format the learning rate with scientific notation
 #        formatted_lr = f"{lr:.1e}"
 #        # Add the model path to the list
-#        model_path = f"unlearned_models/{method}/gemma-2-0.3B_all_arithmetic+eng_lr_{formatted_lr}"
+#        model_path = f"unlearned_models/{method}/gemma-2-0.1B_all_arithmetic+eng_lr_{formatted_lr}"
 #        MODELS_TO_RUN.append(model_path)
 #
 #for model in MODELS_TO_RUN:
@@ -97,7 +67,7 @@ except Exception as e:
     exit(1)
 
 setups = {
-    "gemma-2-0.3B_train_only_forget": {
+    "gemma-2-0.1B_train_only_forget": {
         'model_name'       : f"{MODEL_DIR}/model_path/final_student",
         'first_train_file'   : f"{DATASET_DIR}/pretrain/train_addition_subtraction.jsonl",
         'second_train_file': "",
@@ -125,7 +95,7 @@ setups = {
         'max_length'                  : 256,
 
         'use_wandb'        : True,
-        'wandb_project'    : "gemma-2-0.3B_relearn_only_forget",
+        'wandb_project'    : "gemma-2-0.1B_relearn_only_forget",
         'wandb_run_name'   : None,
         'use_local_record' : True,
         'path_local_record': f"{MODEL_DIR}/local_records/relearned_models/model_name_only_forget_data.txt",
@@ -134,7 +104,7 @@ setups = {
         'shrink_perturb_relearning' : 0
 
     },
-    "gemma-2-0.3B_all_data": {
+    "gemma-2-0.1B_all_data": {
         'model_name'       : f"{MODEL_DIR}/model_path/final_student",
         'first_train_file' :  f"{DATASET_DIR}/pretrain/train_eng.jsonl",
         'second_train_file': f"{DATASET_DIR}/pretrain/train_all_arithmetic.jsonl",
@@ -161,7 +131,7 @@ setups = {
         'max_length'                  : 256,
 
         'use_wandb'        : True,
-        'wandb_project'    : "gemma-2-0.3B_relearn_all_data",
+        'wandb_project'    : "gemma-2-0.1B_relearn_all_data",
         'wandb_run_name'   : None,
         'use_local_record' : True,
         'path_local_record': f"{MODEL_DIR}/local_records/relearned_models/model_name_all_data.txt",
@@ -170,7 +140,7 @@ setups = {
         'shrink_perturb_relearning' : 0
 
     },
-    "gemma-2-0.3B_all_data_perturb": {
+    "gemma-2-0.1B_all_data_perturb": {
         'model_name'       : f"{MODEL_DIR}/model_path/final_student",
         'first_train_file' :  f"{DATASET_DIR}/pretrain/train_eng.jsonl",
         'second_train_file': f"{DATASET_DIR}/pretrain/train_all_arithmetic.jsonl",
@@ -197,7 +167,7 @@ setups = {
         'max_length'                  : 256,
 
         'use_wandb'        : True,
-        'wandb_project'    : "gemma-2-0.3B_relearn_all_data_perturb",
+        'wandb_project'    : "gemma-2-0.1B_relearn_all_data_perturb",
         'wandb_run_name'   : None,
         'use_local_record' : True,
         'path_local_record': f"{MODEL_DIR}/local_records/relearned_models/model_name_all_data_perturb.txt",
@@ -217,11 +187,15 @@ def launch_relearn(setup_id, lr, model):
     model_name = model_name = f"relearned_{model.replace('/', '_')}/{lr}" # Get the substring past the first '/'
     current_setup['path_local_record'] = current_setup['path_local_record'].replace('model_name', model_name)
     current_setup['output_dir'] = current_setup['output_dir'].replace('model_name', model_name)
-    
+
+    current_setup['mask_type'] = "binary" if "mask_binary" in model else (
+        "relative" if "mask_relative" in model else "none")
+    current_setup['alpha'] = model.split("alpha_")[1].split("-")[0] if "alpha_" in model else "baseline"
+
     accelerator = Accelerator()
 
     arithmetic_eval_fn = get_arithmetic_eval_fn(
-        # gets a function that takes a model returns a dicitonary with equation/word problem accuracty for each operation and english validation CE loss
+        # gets a function that takes a model returns a dictionary with equation/word problem accuracy for each operation and english validation CE loss
         model_name          = current_setup['model_name'],
         eng_valid_file      = current_setup['eng_valid_file'],
         batch_size          = current_setup['batch_size'],
@@ -266,7 +240,7 @@ def launch_relearn(setup_id, lr, model):
         use_local_record = current_setup['use_local_record'],
         path_local_record= current_setup['path_local_record'],
         save_models      = current_setup['save_models'],
-        shrink_perturb_relearning = current_setup['shrink_perturb_relearning']
+        # shrink_perturb_relearning = current_setup['shrink_perturb_relearning']
     )
 
 if __name__ == "__main__":
