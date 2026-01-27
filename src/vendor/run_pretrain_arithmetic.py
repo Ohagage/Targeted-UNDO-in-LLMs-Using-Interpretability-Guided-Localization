@@ -10,9 +10,9 @@ from transformers import (
 )
 from torch.utils.data import DataLoader
 
-# SETUPS_TO_RUN = ['gemma-2-0.1B_all_arithmetic+eng', 'gemma-2-0.1B_addition_subtraction+eng']
+SETUPS_TO_RUN = ['gemma-2-0.1B_all_arithmetic+eng', 'gemma-2-0.1B_addition_subtraction+eng']
 # SETUPS_TO_RUN = ['gemma-2-0.6B_all_arithmetic+eng', 'gemma-2-0.6B_addition_subtraction+eng']
-SETUPS_TO_RUN = ['gemma-2-0.3B_all_arithmetic+eng', 'gemma-2-0.3B_addition_subtraction+eng']
+# SETUPS_TO_RUN = ['gemma-2-0.3B_all_arithmetic+eng', 'gemma-2-0.3B_addition_subtraction+eng']
 
 try:
     with open(WANDB_API_KEY_PATH, "r", encoding="utf-8") as f:
@@ -34,8 +34,8 @@ setups = {
 
         'seed'                        : 42,
         'device'                      : "cuda",
-        'batch_size'                  : 45,
-        'gradient_accumulation_steps' : 8,
+        'batch_size'                  : 4,  # Reduced from 45 to fit on smaller GPUs
+        'gradient_accumulation_steps' : 90,  # Increased to maintain effective batch size (8*45=360)
         'join_or_subsequence'         : True,
         'epochs'                      : 1,
         'learning_rate'               : 4e-4,
@@ -67,8 +67,8 @@ setups = {
 
         'seed'                        : 42,
         'device'                      : "cuda",
-        'batch_size'                  : 15,
-        'gradient_accumulation_steps' : 24,
+        'batch_size'                  : 5,
+        'gradient_accumulation_steps' : 72,
         'join_or_subsequence'         : True,
         'epochs'                      : 1,
         'learning_rate'               : 4e-4,
