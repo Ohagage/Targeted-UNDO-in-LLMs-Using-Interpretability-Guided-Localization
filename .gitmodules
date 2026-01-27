@@ -1,3 +1,0 @@
-[submodule "src/vendor"]
-	path = src/vendor
-	url = https://github.com/AddieFoote/distillation-robustify-unlearning
