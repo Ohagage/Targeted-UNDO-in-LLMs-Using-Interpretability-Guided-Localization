@@ -70,7 +70,52 @@ def check_output_dir(output_dir):
 # ----------------------------------------------------------------
 def forward_kl_loss_fn(teacher_logits, student_logits, input_ids, pad_token_id, loss_mask=None):
     """
+    Optimized Forward KL: KL(teacher || student).
+    Uses fused kernels to minimize memory 'materialization' of large logit tensors.
+    """
+    import torch.nn.functional as F
+
+    # 1. Causal Shift
+    # Slice first, then contiguous to keep memory compact
+    teacher_shift = teacher_logits[..., :-1, :].contiguous()
+    student_shift = student_logits[..., :-1, :].contiguous()
+    labels_shift = input_ids[..., 1:].contiguous()
+
+    # 2. Flatten and Mask
+    # view(-1) creates a view, not a copy
+    teacher_view = teacher_shift.view(-1, teacher_shift.size(-1))
+    student_view = student_shift.view(-1, student_shift.size(-1))
+    labels_view = labels_shift.view(-1)
+
+    mask = (labels_view != pad_token_id) & (labels_view != -100)
+    if loss_mask is not None:
+        shift_mask = loss_mask[..., 1:].contiguous().view(-1)
+        mask = mask & shift_mask.bool()
+
+    # 3. Memory-Efficient Math
+    # Instead of creating teacher_probs, teacher_log_probs, AND student_log_probs:
+    # We pass log-probs to kl_div directly.
+    # log_target=False means kl_div expects (log_student, teacher_probs)
+
+    # Apply mask early to reduce tensor size before softmax operations
+    masked_teacher_logits = teacher_view[mask]
+    masked_student_logits = student_view[mask]
+
+    # kl_div(input, target): input must be log-probabilities
+    # We use log_softmax for student and softmax for teacher
+    loss = F.kl_div(
+        F.log_softmax(masked_student_logits, dim=-1),
+        F.softmax(masked_teacher_logits, dim=-1),
+        reduction='batchmean'  # Correctly scales by batch size
+    )
+
+    return loss
+
+
+def forward_kl_loss_fn_legacy(teacher_logits, student_logits, input_ids, pad_token_id, loss_mask=None):
+    """
     Forward KL: KL(teacher || student).
+    Legacy implementation - kept for reference/comparison.
     Implementation detail: shift teacher/student by 1 for next-token prediction.
     """
     teacher_shift = teacher_logits[..., :-1, :].contiguous()
