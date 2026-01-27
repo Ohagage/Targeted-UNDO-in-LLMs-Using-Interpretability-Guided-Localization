@@ -14,12 +14,13 @@ WANDB_API_KEY_PATH = "tokens/wandb_token.txt"
 # Define learning rate ranges for each method
 LR_RANGES = {
     "GradDiff": [6e-6, 7e-6, 8e-6, 9e-6, 1e-5, 2e-5, 3e-5, 4e-5],
-    "MaxEnt": [6e-5, 7e-5, 8e-5, 9e-5, 1e-4, 2e-4, 3e-4, 4e-4],
+    "MaxEnt": [1e-4, 2e-4, 3e-4, 4e-4, 6e-5, 7e-5, 8e-5, 9e-5],
     "RMU": [6e-6, 7e-6, 8e-6, 9e-6, 1e-5, 2e-5, 3e-5, 4e-5]
 }
 
 # Base setups to run - will be expanded with learning rates
-BASE_SETUPS = ["gemma-2-0.3B_MaxEnt", "gemma-2-0.3B_RMU"]
+# We use gemma-2-0.1B, and only use MaxEnt unlearning method
+BASE_SETUPS = ["gemma-2-0.1B_MaxEnt"]
 
 try:
     with open(WANDB_API_KEY_PATH, "r", encoding="utf-8") as f:
@@ -30,6 +31,41 @@ except Exception as e:
 
 
 base_setups = {
+    "gemma-2-0.1B_MaxEnt": {
+        'model_name': f"{MODEL_DIR}/pretrained_models/gemma-2-0.1B_all_arithmetic+eng/final_model",
+        'forget_train_file': f"{DATASET_DIR}/pretrain/train_multiplication_division.jsonl",
+        'retain_train_file': f"{DATASET_DIR}/pretrain/train_addition_subtraction.jsonl",
+        'eng_valid_file': f"{DATASET_DIR}/pretrain/valid_eng.jsonl",
+        'output_dir': f"{MODEL_DIR}/unlearned_models/MaxEnt/gemma-2-0.1B_all_arithmetic+eng",
+        'cache_dir': CACHE_DIR,
+        'dataset_cache_dir': CACHE_DIR,
+
+        'use_retain': True,
+        'seed': 42,
+        'device': "cuda",  # CUDA for SLURM
+        'batch_size': 4,  # Small batch for RTX 2080 Ti (11GB)
+        'gradient_accumulation_steps': 10,  # Effective batch = 40
+        'epochs': 1,
+        'learning_rate': "TBD",
+        'max_steps': 10,  # Original value
+        'num_warmup_steps': 0,
+        'validation_steps': 1,  # Original value
+        'save_checkpoint_steps': -1,  # Original value (no intermediate checkpoints)
+        'scheduler_type': "cosine",
+        'min_lr': 4e-5,
+        'weight_decay': 0.0,
+        'gradient_clipping_threshold': 1.0,
+        'max_length': 256,
+
+        'use_wandb': True,
+        'wandb_project': "gemma-2-0.1B_all_arithmetic+eng_unlearn_MaxEnt",
+        'wandb_run_name': None,
+        'wandb_api_key': api_key,
+        'use_local_record': True,
+        'path_local_record': f"{MODEL_DIR}/local_records/unlearned_models/MaxEnt/gemma-2-0.1B_all_arithmetic+eng.txt",
+    },
+
+    # ==================== GEMMA-2-0.3B SETUPS ====================
     "gemma-2-0.3B_GradDiff": {
         'model_name'       : f"{MODEL_DIR}/pretrained_models/gemma-2-0.3B_all_arithmetic+eng/final_model",
         'forget_train_file': f"{DATASET_DIR}/pretrain/train_multiplication_division.jsonl",
@@ -76,19 +112,19 @@ base_setups = {
 
         'use_retain'                  : True,
         'seed'                        : 42,
-        'device'                      : "cuda",
-        'batch_size'                  : 40,
-        'gradient_accumulation_steps' : 1,
-        'epochs'                      : 1,
-        'learning_rate'               : "TBD",   
-        'max_steps'                   : 10,             
-        'num_warmup_steps'            : 0,
-        'validation_steps'            : 1,
-        'save_checkpoint_steps'       : -1,
-        'scheduler_type'              : "cosine",  
-        'min_lr'                      : 4e-5,        
-        'weight_decay'                : 0.0,         
-        'gradient_clipping_threshold' : 1.0, 
+        'device': "mps",  # Changed for Mac (was "cuda")
+        'batch_size': 4,  # Reduced for Mac memory (was 40)
+        'gradient_accumulation_steps': 10,  # Increased to compensate (was 1)
+        'epochs': 1,
+        'learning_rate': "TBD",
+        'max_steps': 100,  # More steps for testing (was 10)
+        'num_warmup_steps': 0,
+        'validation_steps': 10,  # Validate every 10 steps (was 1)
+        'save_checkpoint_steps': 50,  # Save checkpoint (was -1)
+        'scheduler_type'              : "cosine",
+        'min_lr'                      : 4e-5,
+        'weight_decay'                : 0.0,
+        'gradient_clipping_threshold' : 1.0,
         'max_length'                  : 256,
 
         'use_wandb'        : True,
@@ -135,6 +171,43 @@ base_setups = {
         'use_local_record' : True,
         'path_local_record': f"{MODEL_DIR}/local_records/unlearned_models/RMU/gemma-2-0.3B_all_arithmetic+eng.txt",
     },
+    # ==================== GPT-2 SMALL SETUP ====================
+    # GPT-2 Small (124M params) from HuggingFace
+    # NOTE: For a proper experiment, you should first fine-tune GPT-2 on arithmetic
+    #       For testing the pipeline, using "gpt2" directly is fine
+    "gpt2-small_MaxEnt": {
+        'model_name': "gpt2",  # Loads from HuggingFace (no pre-download needed)
+        'forget_train_file': f"{DATASET_DIR}/pretrain/gpt2-arithmetic/train_multiplication_division.jsonl",
+        'retain_train_file': f"{DATASET_DIR}/pretrain/gpt2-arithmetic/train_addition_subtraction.jsonl",
+        'eng_valid_file': f"{DATASET_DIR}/pretrain/gpt2/valid_eng.jsonl",
+        'output_dir': f"{MODEL_DIR}/unlearned_models/MaxEnt/gpt2_all_arithmetic+eng",
+        'cache_dir': CACHE_DIR,
+        'dataset_cache_dir': CACHE_DIR,
+
+        'use_retain': True,
+        'seed': 42,
+        'device': "mps",  # Mac compatible
+        'batch_size': 8,  # GPT-2 is smaller, can use larger batch
+        'gradient_accumulation_steps': 5,  # Effective batch = 40
+        'epochs': 1,
+        'learning_rate': "TBD",
+        'max_steps': 100,  # Quick test
+        'num_warmup_steps': 0,
+        'validation_steps': 10,
+        'save_checkpoint_steps': 50,
+        'scheduler_type': "cosine",
+        'min_lr': 1e-5,
+        'weight_decay': 0.0,
+        'gradient_clipping_threshold': 1.0,
+        'max_length': 256,  # Short for arithmetic
+
+        'use_wandb': True,
+        'wandb_project': "gpt2_all_arithmetic+eng_unlearn_MaxEnt",
+        'wandb_run_name': None,
+        'wandb_api_key': api_key,
+        'use_local_record': True,
+        'path_local_record': f"{MODEL_DIR}/local_records/unlearned_models/MaxEnt/gpt2_all_arithmetic+eng.txt",
+    },
 }
 
 def create_lr_variant(base_setup_id, learning_rate):
@@ -151,11 +224,12 @@ def create_lr_variant(base_setup_id, learning_rate):
     
     # Update paths to include learning rate in directory/file names
     setup_config['output_dir'] = f"{setup_config['output_dir']}_lr_{learning_rate:.1e}"
-    setup_config['path_local_record'] = setup_config['path_local_record'].replace('.txt', f'_lr_{learning_rate:.1e}.txt')
-    
+    setup_config['path_local_record'] = setup_config['path_local_record'].replace('.txt',
+                                                                                  f'_lr_{learning_rate:.1e}.txt')
+
     # Update wandb run name to include learning rate
     setup_config['wandb_run_name'] = f"lr_{learning_rate:.1e}"
-    
+
     return new_setup_id, setup_config
 
 # Generate all setup variants with different learning rates
@@ -303,10 +377,24 @@ if __name__ == "__main__":
     print(f"Running {len(SETUPS_TO_RUN)} experiments with learning rate search:")
     for setup_id in SETUPS_TO_RUN:
         print(f"  - {setup_id} (LR: {setups[setup_id]['learning_rate']:.1e})")
-    
-    # Create list of the setups (arguments for run_experiment) for all the experiments we want to run 
-    experiments = [(setup_id,) for setup_id in SETUPS_TO_RUN]
-    # Gets a wrapper function compatable with the parallel launch function
-    parallel_fn = get_parallel_launch_wrapper(launch_unlearning_run)
-    # calls run_experiment in parallel on a separate gpu for each experiment setup when a gpu is free
-    launch_in_parallel_one_per_gpu(experiment_list=experiments, experiment_fn=parallel_fn)
+
+    import torch
+
+    # Check if CUDA is available for parallel GPU execution
+    if torch.cuda.is_available():
+        # Multi-GPU parallel execution (original behavior)
+        experiments = [(setup_id,) for setup_id in SETUPS_TO_RUN]
+        parallel_fn = get_parallel_launch_wrapper(launch_unlearning_run)
+        launch_in_parallel_one_per_gpu(experiment_list=experiments, experiment_fn=parallel_fn)
+    else:
+        # Single device execution (Mac MPS or CPU)
+        print("\nNo CUDA GPUs found. Running sequentially on MPS/CPU...")
+        for setup_id in SETUPS_TO_RUN:
+            print(f"\n{'=' * 60}")
+            print(f"Starting: {setup_id}")
+            print(f"{'=' * 60}")
+            launch_unlearning_run(setup_id)
+
+
+
+
