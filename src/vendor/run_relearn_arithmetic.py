@@ -79,8 +79,8 @@ setups = {
         'join_or_subsequence'         : True,
         'seed'                        : 42,
         'device'                      : "cuda",
-        'batch_size'                  : 15,
-        'gradient_accumulation_steps' : 1,
+        'batch_size'                  : 2,
+        'gradient_accumulation_steps' : 8,
         'epochs'                      : 1,
         'learning_rate'               : None,       
         'max_steps'                   : 500,             
@@ -116,8 +116,8 @@ setups = {
         'join_or_subsequence'         : True,
         'seed'                        : 42,
         'device'                      : "cuda",
-        'batch_size'                  : 15,
-        'gradient_accumulation_steps' : 1,
+        'batch_size'                  : 2,
+        'gradient_accumulation_steps' : 8,
         'epochs'                      : 1,
         'learning_rate'               : None,       
         'max_steps'                   : 500,             
@@ -152,8 +152,8 @@ setups = {
         'join_or_subsequence'         : True,
         'seed'                        : 42,
         'device'                      : "cuda",
-        'batch_size'                  : 15,
-        'gradient_accumulation_steps' : 1,
+        'batch_size'                  : 2,
+        'gradient_accumulation_steps' : 8,
         'epochs'                      : 1,
         'learning_rate'               : None,       
         'max_steps'                   : 500,             
@@ -191,6 +191,10 @@ def launch_relearn(setup_id, lr, model):
     current_setup['mask_type'] = "binary" if "mask_binary" in model else (
         "relative" if "mask_relative" in model else "none")
     current_setup['alpha'] = model.split("alpha_")[1].split("-")[0] if "alpha_" in model else "baseline"
+    # Add wandb informative run name
+    short_model_name = model.split('/')[-1].replace('gemma-2-0.1B_', '')
+    run_name = f"{short_model_name}_LR_{lr}"
+    current_setup['wandb_run_name'] = run_name
 
     accelerator = Accelerator()
 
