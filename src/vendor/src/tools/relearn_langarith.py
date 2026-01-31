@@ -55,7 +55,10 @@ def relearn(
     path_local_record="local_record/relearn_log.jsonl",
     stopping_strategy='first_exhausted',
     overwrite_ok=False,
-    save_models=True
+    save_models=True,
+    mask_type=None,
+    alpha=None,
+    model_type=None,
 ):
     """
     "Relearning" script that logs CE and PPL during validation.
