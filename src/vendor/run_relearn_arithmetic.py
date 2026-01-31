@@ -11,9 +11,12 @@ from utils.loss_functions import print_acc
 from utils.validation_functions import get_arithmetic_eval_fn
 from utils.parallel_launch import launch_in_parallel_one_per_gpu, get_parallel_launch_wrapper
 
+# SETUPS_TO_RUN = [
+#     "gemma-2-0.1B_all_data" # "gemma-2-0.1B_all_data_perturb", "gemma-2-0.1B_train_only_forget", "gemma-2-0.1B_all_data"
+# ]
 
 SETUPS_TO_RUN = [
-    "gemma-2-0.1B_all_data" # "gemma-2-0.1B_all_data_perturb", "gemma-2-0.1B_train_only_forget", "gemma-2-0.1B_all_data"
+    "gemma-2-0.1B_all_data, gemma-2-0.1B_train_only_forget"
 ]
 
 MODELS_TO_RUN = [
@@ -69,7 +72,7 @@ except Exception as e:
 setups = {
     "gemma-2-0.1B_train_only_forget": {
         'model_name'       : f"{MODEL_DIR}/model_path/final_student",
-        'first_train_file'   : f"{DATASET_DIR}/pretrain/train_addition_subtraction.jsonl",
+        'first_train_file'   : f"{DATASET_DIR}/pretrain/train_multiplication_division.jsonl",
         'second_train_file': "",
         'interleave_probs': [1],
         'eng_valid_file'   : f"{DATASET_DIR}/pretrain/valid_eng.jsonl",
@@ -188,12 +191,44 @@ def launch_relearn(setup_id, lr, model):
     current_setup['path_local_record'] = current_setup['path_local_record'].replace('model_name', model_name)
     current_setup['output_dir'] = current_setup['output_dir'].replace('model_name', model_name)
 
-    current_setup['mask_type'] = "binary" if "mask_binary" in model else (
-        "relative" if "mask_relative" in model else "none")
-    current_setup['alpha'] = model.split("alpha_")[1].split("-")[0] if "alpha_" in model else "baseline"
-    # Add wandb informative run name
-    short_model_name = model.split('/')[-1].replace('gemma-2-0.1B_', '')
-    run_name = f"{short_model_name}_LR_{lr}"
+    if "pretrained_models" in model:
+        if "addition_subtraction" in model:
+            current_setup['model_type'] = "oracle_model"
+        else:
+            current_setup['model_type'] = "reference_model"
+    elif "unlearned_models" in model:
+        current_setup['model_type'] = "unlearned_model"
+    elif "partial_distill" in model:
+        current_setup['model_type'] = "partial_distill_model"
+    else:
+        current_setup['model_type'] = "unknown"
+
+    # Determine mask_type and alpha (only relevant for partial_distill models)
+    if "partial_distill" in model:
+        current_setup['mask_type'] = "binary" if "mask_binary" in model else (
+            "relative" if "mask_relative" in model else "none")
+        current_setup['alpha'] = model.split("alpha_")[1].split("-")[0] if "alpha_" in model else "baseline"
+    else:
+        current_setup['mask_type'] = "not_applicable"
+        current_setup['alpha'] = "not_applicable"
+
+    # Create descriptive run name based on model type
+    if current_setup['model_type'] == 'oracle_model':
+        run_name = f"Oracle_Relearn_LR_{lr}"
+    elif current_setup['model_type'] == 'reference_model':
+        run_name = f"Reference_Relearn_LR_{lr}"
+    elif current_setup['model_type'] == 'unlearned_model':
+        # Extract unlearning method (e.g., MaxEnt, GradDiff, RMU)
+        method = model.split('/')[1] if len(model.split('/')) > 1 else 'Unknown'
+        run_name = f"Unlearned_{method}_Relearn_LR_{lr}"
+    elif current_setup['model_type'] == 'partial_distill_model':
+        mask = current_setup['mask_type']
+        alpha = current_setup['alpha']
+        run_name = f"PartialDistill_alpha_{alpha}_mask_{mask}_Relearn_LR_{lr}"
+    else:
+        short_model_name = model.split('/')[-1].replace('gemma-2-0.1B_', '')
+        run_name = f"{short_model_name}_Relearn_LR_{lr}"
+
     current_setup['wandb_run_name'] = run_name
 
     accelerator = Accelerator()
@@ -245,6 +280,9 @@ def launch_relearn(setup_id, lr, model):
         path_local_record= current_setup['path_local_record'],
         save_models      = current_setup['save_models'],
         # shrink_perturb_relearning = current_setup['shrink_perturb_relearning']
+        mask_type=current_setup['mask_type'],
+        alpha=current_setup['alpha'],
+        model_type=current_setup['model_type'],
     )
 
 if __name__ == "__main__":
