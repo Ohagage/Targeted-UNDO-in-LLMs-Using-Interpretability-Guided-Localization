@@ -192,3 +192,19 @@ __marimo__/
 
 # Mac OS
 .DS_Store
+# ===========================================
+# Project-specific large files (DO NOT TRACK)
+# ===========================================
+
+# Model checkpoints and weights
+gemma-2-0.1B_all_arithmetic+eng/
+*.safetensors
+
+# Large datasets
+*.jsonl
+arithmetic.zip
+
+# SNMF outputs (large, regenerable from scripts)
+outputs/
+
+# Note: masks/ IS tracked (small, important for reproducibility)
