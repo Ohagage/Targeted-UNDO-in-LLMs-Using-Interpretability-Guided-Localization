@@ -10,7 +10,7 @@ SupervisedConceptDataset class.
 Usage:
     python -m targeted_undo.build_snmf_concept_dataset \
         --data-dir /path/to/jsonl/files \
-        --output-path data/snmf_concepts.json \
+        --output-path src/snmf-mlp-decomposition/data/arithmetic.json \
         --samples-per-concept 300
 
 Output Format:
