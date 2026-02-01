@@ -10,7 +10,7 @@ This script adapts the snmf-mlp-decomposition project to work with local models
 Usage:
     python -m targeted_undo.run_snmf \
         --model-path gemma-2-0.1B_all_arithmetic+eng/final_model \
-        --data-path data/snmf_concepts.json \
+        --data-path src/snmf-mlp-decomposition/data/arithmetic.json \
         --output-dir outputs/snmf_results \
         --layers 0,1,2,3,4,5 \
         --rank 50 \
