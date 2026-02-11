@@ -1,94 +1,125 @@
 import wandb
 import pandas as pd
 import matplotlib.pyplot as plt
+import datetime
 import json
 
+# ================= CONSTANTS =================
+WANDB_KEY = "8b80f738391c946f3c8b26d878a282cbf763ff78"
+PROJECT_PATH = "hagage-tel-aviv-university/gemma-2-0.1B_relearn_only_forget"
+
+# List of mixing coefficients to iterate through
+ALPHAS_TO_PROCESS = [0.1, 0.3, 0.6, 0.9]
+
+# Transparency and style settings
+INDIVIDUAL_OPACITY = 0.10  # Faint lines for LR attacks
+MEAN_LINE_STYLE = "--"  # Dashed for the mean trend
+WORST_CASE_STYLE = "-"  # Solid for the bold worst-case adversary
+# =============================================
+
 # Authenticate
-wandb.login(key="8b80f738391c946f3c8b26d878a282cbf763ff78")
+wandb.login(key=WANDB_KEY)
 api = wandb.Api()
-project_path = "hagage-tel-aviv-university/gemma-2-0.1B_relearn_only_forget"
 
-# 1. Define Run Groups
-# Ensure these regex patterns match your wandb_run_name logic in run_relearn_arithmetic.py
-groups = {
-    "Model tested": {
-        "filters": {"config.wandb_run_name": {"$regex": "PartialDistill_alpha_0.9_mask_none.*"}},
-        "color": "#1f77b4"
-    },
-    "Unlearn Only (MaxEnt)": {
-        "filters": {"config.wandb_run_name": {"$regex": "Unlearned_MaxEnt_Relearn.*"}},
-        "color": "#9467bd"
-    },
-    "Oracle (Gold Standard)": {
-        "filters": {"config.wandb_run_name": {"$regex": "Oracle_Relearn.*"}},
-        "color": "#ff7f0e"
+for ALPHA in ALPHAS_TO_PROCESS:
+    print(f"\n" + "=" * 50)
+    print(f"STARTING PROCESS FOR ALPHA: {ALPHA}")
+    print("=" * 50)
+
+    # Define Run Groups dynamically for the current ALPHA
+    groups = {
+        f"UNDO (alpha={ALPHA}, No Mask)": {
+            "filters": {"config.wandb_run_name": {"$regex": f"PartialDistill_alpha_{ALPHA}_mask_none.*"},
+                        "state": "finished"},
+            "color": "#1f77b4"
+        },
+        f"Localized-UNDO (alpha={ALPHA}, Binary Mask)": {
+            "filters": {"config.wandb_run_name": {"$regex": f"PartialDistill_alpha_{ALPHA}_mask_binary.*"},
+                        "state": "finished"},
+            "color": "#2ca02c"
+        },
+        f"Localized-UNDO (alpha={ALPHA}, SNMF Mask)": {
+            "filters": {"config.wandb_run_name": {"$regex": f"PartialDistill_alpha_{ALPHA}_mask_snmf.*"},
+                        "state": "finished"},
+            "color": "#d62728"
+        },
+        "Unlearn Only (MaxEnt)": {
+            "filters": {"config.wandb_run_name": {"$regex": "Unlearned_MaxEnt_Relearn.*"}, "state": "finished"},
+            "color": "#9467bd"
+        },
+        "Oracle (Gold Standard)": {
+            "filters": {"config.wandb_run_name": {"$regex": "Oracle_Relearn.*"}, "state": "finished"},
+            "color": "#ff7f0e"
+        }
     }
-}
 
-plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(12, 7))
 
-for label, params in groups.items():
-    runs = api.runs(project_path, filters=params["filters"])
-    all_curves = []
+    for label, params in groups.items():
+        runs = api.runs(PROJECT_PATH, filters=params["filters"])
+        all_curves = []
 
-    print(f"\nProcessing {label}: Found {len(runs)} runs.")
+        print(f"Processing {label}: Found {len(runs)} finished runs.")
 
-    for run in runs:
-        # Get LR from config for identification
-        config = run.config
-        if isinstance(config, str):
-            try:
-                config = json.loads(config)
-            except:
-                continue
+        for run in runs:
+            # Fetch history for arithmetic Forget Set metrics
+            history = run.history(keys=[
+                "train/step",
+                "val/multiplication_equation_acc", "val/multiplication_word_problem_acc",
+                "val/division_equation_acc", "val/division_word_problem_acc"
+            ], samples=1000)
 
-        lr = config.get("learning_rate", "unknown")
-        print(f" - Found run: {run.name} | LR: {lr}")
+            if history.empty: continue
 
-        history = run.history(keys=[
-            "train/step",
-            "val/multiplication_equation_acc", "val/multiplication_word_problem_acc",
-            "val/division_equation_acc", "val/division_word_problem_acc"
-        ], samples=1000)
+            forget_cols = [
+                "val/multiplication_equation_acc", "val/multiplication_word_problem_acc",
+                "val/division_equation_acc", "val/division_word_problem_acc"
+            ]
 
-        if history.empty:
-            continue
+            if all(col in history.columns for col in forget_cols):
+                # Calculate combined performance P
+                history["combined_forget_acc"] = history[forget_cols].mean(axis=1)
+                history["run_id"] = run.id
+                all_curves.append(history)
 
-        forget_cols = [
-            "val/multiplication_equation_acc", "val/multiplication_word_problem_acc",
-            "val/division_equation_acc", "val/division_word_problem_acc"
-        ]
+        if all_curves:
+            df = pd.concat(all_curves)
 
-        if all(col in history.columns for col in forget_cols):
-            # Calculate the average performance (P) for this specific LR run
-            history["combined_forget_acc"] = history[forget_cols].mean(axis=1)
-            history["run_id"] = run.id  # Unique ID to separate curves
-            all_curves.append(history)
+            # 1. Plot individual LR trajectories
+            for run_id, run_df in df.groupby("run_id"):
+                plt.plot(run_df["train/step"], run_df["combined_forget_acc"],
+                         color=params["color"], alpha=INDIVIDUAL_OPACITY, linewidth=0.8)
 
-    if all_curves:
-        df = pd.concat(all_curves)
+            # 2. Compute and plot Mean (Dashed) and Worst-Case (Solid Bold)
+            stats = df.groupby("train/step")["combined_forget_acc"].agg(['mean', 'max']).reset_index()
 
-        # Plot individual LR curves with partial opacity
-        # Grouping by run_id ensures each LR attack is drawn as a separate thin line
-        for run_id, run_df in df.groupby("run_id"):
-            plt.plot(run_df["train/step"], run_df["combined_forget_acc"],
-                     color=params["color"], alpha=0.45, linewidth=1)
+            plt.plot(stats["train/step"], stats["mean"],
+                     color=params["color"], linestyle=MEAN_LINE_STYLE, linewidth=1.5,
+                     label=f"{label} (Mean)")
 
-        # Compute and plot the Upper Envelope (Worst-case)
-        worst_case = df.groupby("train/step")["combined_forget_acc"].max().reset_index()
-        plt.plot(worst_case["train/step"], worst_case["combined_forget_acc"],
-                 color=params["color"], linewidth=3, label=label)
+            plt.plot(stats["train/step"], stats["max"],
+                     color=params["color"], linestyle=WORST_CASE_STYLE, linewidth=3,
+                     label=f"{label} (Worst-Case)")
 
-# Final Plot Styling
+    # Plot Finalization
+    plt.xlabel("Training Steps on Forget Domain", fontsize=12)
+    plt.ylabel("Accuracy (Forget Set Average)", fontsize=12)
+    plt.title(f"Comparison of Masking Strategies vs. Baselines (alpha={ALPHA})", fontsize=14)
+    plt.grid(True, linestyle="--", alpha=0.3)
+    plt.legend(frameon=False, loc='upper left', bbox_to_anchor=(1, 1))
+    plt.ylim(-0.02, 1.02)
+    plt.gca().spines['top'].set_visible(False)
+    plt.gca().spines['right'].set_visible(False)
+    plt.tight_layout()
 
-plt.xlabel("Training Steps on Forget Domain", fontsize=12)
-plt.ylabel("Accuracy (Forget Set)", fontsize=12)
-plt.title("Model tested vs. Baselines: Robustness to Relearning", fontsize=14)
-plt.grid(True, linestyle="--", alpha=0.4)
-plt.legend(frameon=False)
-plt.ylim(-0.02, 1.02)
-plt.gca().spines['top'].set_visible(False)
-plt.gca().spines['right'].set_visible(False)
+    # ================= SAVE RESULTS =================
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"relearning_robustness_alpha_{ALPHA}_{timestamp}.png"
+    plt.savefig(filename, dpi=300, bbox_inches='tight')
+    print(f"[SUCCESS] Saved plot to: {filename}")
+    # ================================================
 
-plt.tight_layout()
-plt.show()
+    # Close current figure to free memory before next iteration
+    plt.close()
+
+print("\nAll alpha values have been processed successfully.")
