@@ -11,8 +11,8 @@ project_path = "hagage-tel-aviv-university/gemma-2-0.1B_relearn_only_forget"
 # 1. Define Run Groups
 # Ensure these regex patterns match your wandb_run_name logic in run_relearn_arithmetic.py
 groups = {
-    "Localized-UNDO (alpha=0.6)": {
-        "filters": {"config.wandb_run_name": {"$regex": "PartialDistill_alpha_0.6_mask_none.*"}},
+    "Model tested": {
+        "filters": {"config.wandb_run_name": {"$regex": "PartialDistill_alpha_0.9_mask_none.*"}},
         "color": "#1f77b4"
     },
     "Unlearn Only (MaxEnt)": {
@@ -83,7 +83,7 @@ for label, params in groups.items():
 
 plt.xlabel("Training Steps on Forget Domain", fontsize=12)
 plt.ylabel("Accuracy (Forget Set)", fontsize=12)
-plt.title("Localized-UNDO vs. Baselines: Robustness to Relearning", fontsize=14)
+plt.title("Model tested vs. Baselines: Robustness to Relearning", fontsize=14)
 plt.grid(True, linestyle="--", alpha=0.4)
 plt.legend(frameon=False)
 plt.ylim(-0.02, 1.02)
