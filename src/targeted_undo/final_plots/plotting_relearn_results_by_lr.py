@@ -39,17 +39,17 @@ api = wandb.Api()
 
 # One base colour per group config; alpha-value controls opacity
 group_configs = {
-    "UNDO (No Mask)": {
+    "UNDO (global mask)": {
         "pattern": "PartialDistill_alpha_{alpha}_mask_none",
         "linestyle": "-",
         "color": "#1f77b4",   # blue
     },
-    "Localized-UNDO (Binary Mask)": {
+    "Localized-UNDO (Delta-Masking via Weight Discrepancy)": {
         "pattern": "PartialDistill_alpha_{alpha}_mask_binary",
         "linestyle": "--",
         "color": "#2ca02c",   # green
     },
-    "Localized-UNDO (SNMF Mask)": {
+    "Localized-UNDO (SNMF mask)": {
         "pattern": "PartialDistill_alpha_{alpha}_mask_snmf",
         "linestyle": "-.",
         "color": "#d62728",   # red
@@ -62,7 +62,7 @@ baseline_configs = {
         "color": "#7f7f7f",
         "linestyle": ":",
     },
-    "Oracle (Gold Standard)": {
+    "Oracle (data filtering)": {
         "pattern": "Oracle_Relearn",
         "color": "#000000",
         "linestyle": "--",

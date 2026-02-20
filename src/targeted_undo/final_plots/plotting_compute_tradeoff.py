@@ -50,9 +50,9 @@ MASK_RELEARN_TO_DISTILL = {"none": "none", "binary": "binary", "snmf": "relative
 
 # Colours per mask type – same as plotting_relearn_results_by_lr
 MASK_STYLES = {
-    "none":   {"color": "#1f77b4", "marker": "o", "label": "UNDO (No Mask)"},
-    "binary": {"color": "#2ca02c", "marker": "s", "label": "Localized-UNDO (Binary Mask)"},
-    "snmf":   {"color": "#d62728", "marker": "^", "label": "Localized-UNDO (SNMF Mask)"},
+    "none":   {"color": "#1f77b4", "marker": "o", "label": "UNDO (global mask)"},
+    "binary": {"color": "#2ca02c", "marker": "s", "label": "Localized-UNDO (Delta-Masking via Weight Discrepancy)"},
+    "snmf":   {"color": "#d62728", "marker": "^", "label": "Localized-UNDO (SNMF mask)"},
 }
 # =================================================================
 
@@ -271,7 +271,7 @@ def main():
 
     # Data Filtering reference star
     star = ax1.plot(100, 100, marker="*", color="black", markersize=20,
-                    zorder=10, label="Data Filtering")
+                    zorder=10, label="Oracle (data filtering)")
 
     # Dashed trend-line
     all_x = np.concatenate([df["compute"].values, [100]])
@@ -300,7 +300,7 @@ def main():
         handles.append(proxy)
         labels.append(st["label"])
     handles.append(star[0])
-    labels.append("Data Filtering")
+    labels.append("Oracle (data filtering)")
     ax1.legend(handles, labels, frameon=False, fontsize=10, loc="upper left")
 
     ax1.grid(True, linestyle="--", alpha=0.3)
