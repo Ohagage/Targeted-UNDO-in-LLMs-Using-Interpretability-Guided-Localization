@@ -1,0 +1,18 @@
+Config,Alpha,Training Steps,Compute (% of Data Filtering)
+Oracle (Data Filtering),-,1000,100.0%
+Reference (Full Pretrain),-,1000,100.0%
+UNDO (No Mask),0.1,180,18.0%
+Localized-UNDO (Binary Mask),0.1,1,0.1%
+Localized-UNDO (SNMF Mask),0.1,1,0.1%
+UNDO (No Mask),0.3,300,30.0%
+Localized-UNDO (Binary Mask),0.3,140,14.0%
+Localized-UNDO (SNMF Mask),0.3,200,20.0%
+UNDO (No Mask),0.6,580,58.0%
+Localized-UNDO (Binary Mask),0.6,200,20.0%
+Localized-UNDO (SNMF Mask),0.6,180,18.0%
+UNDO (No Mask),0.9,1000,100.0%
+Localized-UNDO (Binary Mask),0.9,220,22.0%
+Localized-UNDO (SNMF Mask),0.9,200,20.0%
+UNDO (No Mask),1.0,1000,100.0%
+Localized-UNDO (Binary Mask),1.0,200,20.0%
+Localized-UNDO (SNMF Mask),1.0,220,22.0%

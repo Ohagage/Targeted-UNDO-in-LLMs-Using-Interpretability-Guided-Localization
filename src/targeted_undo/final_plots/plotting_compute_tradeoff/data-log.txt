@@ -1,0 +1,84 @@
+============================================================
+STEP 1: Oracle pretraining steps (S_DataFiltering)
+============================================================
+  S_DataFiltering = 1000
+
+============================================================
+STEP 2: Partial-distillation steps (S_UNDO)
+============================================================
+  alpha=0.1, mask=binary: 1 steps
+  alpha=0.1, mask=none: 180 steps
+  alpha=0.1, mask=relative: 1 steps
+  alpha=0.1, mask=snmf: 1 steps
+  alpha=0.3, mask=binary: 140 steps
+  alpha=0.3, mask=none: 300 steps
+  alpha=0.3, mask=relative: 200 steps
+  alpha=0.3, mask=snmf: 1 steps
+  alpha=0.6, mask=binary: 200 steps
+  alpha=0.6, mask=none: 580 steps
+  alpha=0.6, mask=relative: 180 steps
+  alpha=0.6, mask=snmf: 200 steps
+  alpha=0.9, mask=binary: 220 steps
+  alpha=0.9, mask=none: 1000 steps
+  alpha=0.9, mask=relative: 200 steps
+  alpha=0.9, mask=snmf: 200 steps
+  alpha=1, mask=binary: 200 steps
+  alpha=1, mask=none: 1000 steps
+  alpha=1, mask=relative: 220 steps
+  alpha=1, mask=snmf: 160 steps
+
+============================================================
+STEP 3: Relearning performances
+============================================================
+
+  [Unlearn Only (MaxEnt)]
+    worst-case P_UO = 0.6825  (mean=0.6825, n=1)
+
+  [Oracle (Data Filtering)]
+    worst-case P_DF = 0.0175  (mean=0.0175, n=1)
+
+  Denominator (P_DF - P_UO) = -0.6650
+
+  [UNDO Models]
+    alpha=0.1, mask=none: P=0.2825, S=180, Compute=18.0%, Robustness=60.2% (1 runs)
+    alpha=0.1, mask=binary: P=0.6900, S=1, Compute=0.1%, Robustness=-1.1% (1 runs)
+    alpha=0.1, mask=snmf: P=0.6825, S=1, Compute=0.1%, Robustness=0.0% (1 runs)
+    alpha=0.3, mask=none: P=0.2675, S=300, Compute=30.0%, Robustness=62.4% (1 runs)
+    alpha=0.3, mask=binary: P=0.3150, S=140, Compute=14.0%, Robustness=55.3% (1 runs)
+    alpha=0.3, mask=snmf: P=0.6875, S=200, Compute=20.0%, Robustness=-0.8% (1 runs)
+    alpha=0.6, mask=none: P=0.1575, S=580, Compute=58.0%, Robustness=78.9% (1 runs)
+    alpha=0.6, mask=binary: P=0.3350, S=200, Compute=20.0%, Robustness=52.3% (1 runs)
+    alpha=0.6, mask=snmf: P=0.3125, S=180, Compute=18.0%, Robustness=55.6% (1 runs)
+    alpha=0.9, mask=none: P=0.0400, S=1000, Compute=100.0%, Robustness=96.6% (1 runs)
+    alpha=0.9, mask=binary: P=0.2875, S=220, Compute=22.0%, Robustness=59.4% (1 runs)
+    alpha=0.9, mask=snmf: P=0.3750, S=200, Compute=20.0%, Robustness=46.2% (1 runs)
+    alpha=1.0, mask=binary: P=0.2700, S=200, Compute=20.0%, Robustness=62.0% (1 runs)
+    alpha=1.0, mask=snmf: P=0.3075, S=220, Compute=22.0%, Robustness=56.4% (1 runs)
+
+============================================================
+STEP 4: Plotting
+============================================================
+
+[SUCCESS] Saved plot → /Users/ohagage/Desktop/TAU/year-1/sem-a/Interpretability of Large Language Models/project/Targeted-UNDO-in-LLMs-Using-Interpretability-Guided-Localization/src/targeted_undo/final_plots/plotting_compute_tradeoff/compute_tradeoff_arithmetic_20260220_193846.png
+
+============================================================
+SUMMARY
+============================================================
+Alpha   Mask      Compute%  Robust%   P_worst   S_undo  #Runs 
+--------------------------------------------------------------
+0.1     binary    0.1       -1.1      0.6900    1       1     
+0.3     binary    14.0      55.3      0.3150    140     1     
+0.6     binary    20.0      52.3      0.3350    200     1     
+0.9     binary    22.0      59.4      0.2875    220     1     
+1.0     binary    20.0      62.0      0.2700    200     1     
+0.1     none      18.0      60.2      0.2825    180     1     
+0.3     none      30.0      62.4      0.2675    300     1     
+0.6     none      58.0      78.9      0.1575    580     1     
+0.9     none      100.0     96.6      0.0400    1000    1     
+0.1     snmf      0.1       0.0       0.6825    1       1     
+0.3     snmf      20.0      -0.8      0.6875    200     1     
+0.6     snmf      18.0      55.6      0.3125    180     1     
+0.9     snmf      20.0      46.2      0.3750    200     1     
+1.0     snmf      22.0      56.4      0.3075    220     1     
+--------------------------------------------------------------
+P_UnlearnOnly   = 0.6825
