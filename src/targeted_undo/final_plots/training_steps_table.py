@@ -25,9 +25,9 @@ ALPHAS = [0.1, 0.3, 0.6, 0.9, 1.0]
 
 # Maps the mask_type value stored in distill wandb config to a display name
 MASK_DISPLAY = {
-    "none":     "UNDO (No Mask)",
-    "binary":   "Localized-UNDO (Binary Mask)",
-    "relative": "Localized-UNDO (SNMF Mask)",
+    "none":     "UNDO (global mask)",
+    "binary":   "Localized-UNDO (Delta-Masking via Weight Discrepancy)",
+    "relative": "Localized-UNDO (SNMF mask)",
 }
 
 OUTPUT_DIR = Path(__file__).parent / Path(__file__).stem
@@ -106,7 +106,7 @@ def main():
 
     # Baselines
     rows.append({
-        "Config": "Oracle (Data Filtering)",
+        "Config": "Oracle (data filtering)",
         "Alpha": "-",
         "Training Steps": S_oracle,
         "Compute (% of Data Filtering)": "100.0%",

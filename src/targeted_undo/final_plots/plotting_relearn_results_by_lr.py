@@ -39,17 +39,17 @@ api = wandb.Api()
 
 # One base colour per group config; alpha-value controls opacity
 group_configs = {
-    "UNDO (No Mask)": {
+    "UNDO (Global mask)": {
         "pattern": "PartialDistill_alpha_{alpha}_mask_none",
         "linestyle": "-",
         "color": "#1f77b4",   # blue
     },
-    "Localized-UNDO (Binary Mask)": {
+    "Localized-UNDO (Delta mask)": {
         "pattern": "PartialDistill_alpha_{alpha}_mask_binary",
         "linestyle": "--",
         "color": "#2ca02c",   # green
     },
-    "Localized-UNDO (SNMF Mask)": {
+    "Localized-UNDO (SNMF mask)": {
         "pattern": "PartialDistill_alpha_{alpha}_mask_snmf",
         "linestyle": "-.",
         "color": "#d62728",   # red
@@ -62,7 +62,7 @@ baseline_configs = {
         "color": "#7f7f7f",
         "linestyle": ":",
     },
-    "Oracle (Gold Standard)": {
+    "Oracle (Data filtering)": {
         "pattern": "Oracle_Relearn",
         "color": "#000000",
         "linestyle": "--",
@@ -211,30 +211,35 @@ def fetch_all_runs_with_lr():
 # ------------------------------------------------------------------ #
 def _plot_metric(groups_data, metric_col, ylabel, title, out_path):
     """Generic plotter used for both forget and retain figures."""
-    plt.figure(figsize=(14, 8))
+    fig, ax = plt.subplots(figsize=(14, 8))
 
-    # Alpha-dependent groups
-    for (group_name, alpha_val), histories in groups_data.items():
-        if alpha_val is None or not histories:
-            continue
-        df = pd.concat(histories)
-        if metric_col not in df.columns:
-            continue
-        stats = df.groupby("train/step")[metric_col].agg(['mean']).reset_index()
+    label_to_handle = {}
 
-        cfg = group_configs[group_name]
-        opacity = alpha_to_opacity(alpha_val)
+    # Plot in config-defined order: group_configs first, then baselines
+    for group_name in group_configs:
+        for alpha_val in ALPHAS_TO_PROCESS:
+            histories = groups_data.get((group_name, alpha_val), [])
+            if not histories:
+                continue
+            df = pd.concat(histories)
+            if metric_col not in df.columns:
+                continue
+            stats = df.groupby("train/step")[metric_col].agg(['mean']).reset_index()
 
-        plt.plot(
-            stats["train/step"], stats["mean"],
-            color=cfg["color"], linestyle=cfg["linestyle"],
-            linewidth=LINE_WIDTH, alpha=opacity,
-            label=f"{group_name} (α={alpha_val})",
-        )
+            cfg = group_configs[group_name]
+            opacity = alpha_to_opacity(alpha_val)
+            lbl = f"{group_name} (α={alpha_val})"
 
-    # Baselines (full opacity)
-    for (group_name, alpha_val), histories in groups_data.items():
-        if alpha_val is not None or not histories:
+            line, = ax.plot(
+                stats["train/step"], stats["mean"],
+                color=cfg["color"], linestyle=cfg["linestyle"],
+                linewidth=LINE_WIDTH, alpha=opacity,
+            )
+            label_to_handle[lbl] = line
+
+    for group_name in baseline_configs:
+        histories = groups_data.get((group_name, None), [])
+        if not histories:
             continue
         df = pd.concat(histories)
         if metric_col not in df.columns:
@@ -242,25 +247,30 @@ def _plot_metric(groups_data, metric_col, ylabel, title, out_path):
         stats = df.groupby("train/step")[metric_col].agg(['mean']).reset_index()
         cfg = baseline_configs[group_name]
 
-        plt.plot(
+        line, = ax.plot(
             stats["train/step"], stats["mean"],
             color=cfg["color"], linestyle=cfg["linestyle"],
-            linewidth=LINE_WIDTH, label=group_name,
+            linewidth=LINE_WIDTH,
         )
+        label_to_handle[group_name] = line
 
-    plt.xlabel("Training Steps on Forget Domain", fontsize=14)
-    plt.ylabel(ylabel, fontsize=14)
-    plt.title(title, fontsize=16)
-    plt.grid(True, linestyle="--", alpha=0.3)
-    plt.legend(frameon=False, loc='upper left', bbox_to_anchor=(1, 1), fontsize=10)
-    plt.ylim(-0.02, 1.02)
-    plt.gca().spines['top'].set_visible(False)
-    plt.gca().spines['right'].set_visible(False)
-    plt.tight_layout()
+    ax.set_xlabel("Training Steps on Forget Domain", fontsize=14)
+    ax.set_ylabel(ylabel, fontsize=14)
+    ax.set_title(title, fontsize=16)
+    ax.grid(True, linestyle="--", alpha=0.3)
+    ax.set_ylim(-0.02, 1.02)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
 
-    plt.savefig(out_path, dpi=300, bbox_inches='tight')
+    handles = list(label_to_handle.values())
+    labels = list(label_to_handle.keys())
+    ax.legend(handles, labels, frameon=False, loc='upper left',
+              bbox_to_anchor=(1, 1), fontsize=10)
+
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=300, bbox_inches='tight')
     print(f"[SUCCESS] Saved plot → {out_path}")
-    plt.close()
+    plt.close(fig)
 
 
 # ------------------------------------------------------------------ #
@@ -305,7 +315,7 @@ def create_plots_for_lr(lr, groups_data):
     _plot_metric(
         groups_data,
         metric_col="combined_forget_acc",
-        ylabel="Accuracy (Forget Set Average)",
+        ylabel="Accuracy on Forget Domain",
         title="Relearning: Accuracy on Forget Domain",
         out_path=OUTPUT_DIR / f"forget_LR_{lr_str}_{ts}.png",
     )
