@@ -1,12 +1,13 @@
 """
 Distillation Training Curves
 
-For each mask configuration, generates a figure with two subplots:
+Generates a single figure with two subplots:
   - Left:  Accuracy on the Retain set (addition + subtraction)
   - Right: Accuracy on the Forget set (multiplication + division)
 
-Each subplot shows one line per alpha value, plotted against training steps.
-Data is fetched from the partial distillation wandb project.
+All mask configurations are shown together.  Each mask type gets a
+distinct colour (matching the relearn plot) and linestyle, while the
+distillation alpha controls line opacity.
 """
 
 import wandb
@@ -14,7 +15,8 @@ import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import numpy as np
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 import datetime
 from pathlib import Path
 
@@ -26,9 +28,21 @@ DISTILL_PROJECT = f"{WANDB_ENTITY}/gemma-2-0.1B_MaxEnt_lr_7e-05_partial_distill"
 ALPHAS = [0.1, 0.3, 0.6, 0.9, 1.0]
 
 MASK_CONFIGS = {
-    "none":     "UNDO (global mask)",
-    "binary":   "Localized-UNDO (Delta-Masking via Weight Discrepancy)",
-    "relative": "Localized-UNDO (SNMF mask)",
+    "none": {
+        "label": "UNDO (Global mask)",
+        "color": "#1f77b4",
+        "linestyle": "-",
+    },
+    "binary": {
+        "label": "Localized-UNDO (Delta mask)",
+        "color": "#2ca02c",
+        "linestyle": "--",
+    },
+    "relative": {
+        "label": "Localized-UNDO (SNMF mask)",
+        "color": "#d62728",
+        "linestyle": "-.",
+    },
 }
 
 FORGET_COLS = [
@@ -41,19 +55,19 @@ RETAIN_COLS = [
 ]
 ALL_METRIC_COLS = FORGET_COLS + RETAIN_COLS
 
-LINE_WIDTH = 2.5
-
-ALPHA_COLORS = {
-    0.1: "#636EFA",
-    0.3: "#EF553B",
-    0.6: "#00CC96",
-    0.9: "#AB63FA",
-    1.0: "#FFA15A",
-}
+LINE_WIDTH = 1.5
 
 OUTPUT_DIR = Path(__file__).parent / Path(__file__).stem
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # =================================================================
+
+
+def alpha_to_opacity(alpha_val):
+    a_min, a_max = min(ALPHAS), max(ALPHAS)
+    if a_max == a_min:
+        return 1.0
+    t = (alpha_val - a_min) / (a_max - a_min)
+    return 0.1 + 0.9 * t
 
 
 def fetch_distill_runs(api):
@@ -108,51 +122,55 @@ def fetch_distill_runs(api):
     return runs_by_config
 
 
-def create_config_figure(mask_type, display_name, runs_by_config, ts):
-    """Create a figure with two subplots (retain + forget) for one mask config."""
-    fig, (ax_retain, ax_forget) = plt.subplots(1, 2, figsize=(16, 6))
+def create_combined_figure(runs_by_config, ts):
+    """Create a single figure with retain (left) and forget (right) subplots."""
+    fig, (ax_retain, ax_forget) = plt.subplots(1, 2, figsize=(18, 7))
 
-    for alpha in ALPHAS:
-        key = (mask_type, alpha)
-        histories = runs_by_config.get(key, [])
-        if not histories:
-            print(f"  MISSING: alpha={alpha}")
-            continue
+    seen_masks = set()
 
-        df = pd.concat(histories)
-        color = ALPHA_COLORS.get(alpha, "#888888")
+    for mask_type, cfg in MASK_CONFIGS.items():
+        for alpha in ALPHAS:
+            key = (mask_type, alpha)
+            histories = runs_by_config.get(key, [])
+            if not histories:
+                continue
 
-        # Retain subplot (left)
-        if "combined_retain_acc" in df.columns:
-            stats = (
-                df.dropna(subset=["combined_retain_acc"])
-                .groupby("train/step")["combined_retain_acc"]
-                .mean()
-                .reset_index()
-                .sort_values("train/step")
-            )
-            ax_retain.plot(
-                stats["train/step"], stats["combined_retain_acc"],
-                color=color, linewidth=LINE_WIDTH, label=f"α = {alpha}",
-            )
+            df = pd.concat(histories)
+            opacity = alpha_to_opacity(alpha)
 
-        # Forget subplot (right)
-        if "combined_forget_acc" in df.columns:
-            stats = (
-                df.dropna(subset=["combined_forget_acc"])
-                .groupby("train/step")["combined_forget_acc"]
-                .mean()
-                .reset_index()
-                .sort_values("train/step")
-            )
-            ax_forget.plot(
-                stats["train/step"], stats["combined_forget_acc"],
-                color=color, linewidth=LINE_WIDTH, label=f"α = {alpha}",
-            )
+            if "combined_retain_acc" in df.columns:
+                stats = (
+                    df.dropna(subset=["combined_retain_acc"])
+                    .groupby("train/step")["combined_retain_acc"]
+                    .mean()
+                    .reset_index()
+                    .sort_values("train/step")
+                )
+                ax_retain.plot(
+                    stats["train/step"], stats["combined_retain_acc"],
+                    color=cfg["color"], linestyle=cfg["linestyle"],
+                    linewidth=LINE_WIDTH, alpha=opacity,
+                )
+
+            if "combined_forget_acc" in df.columns:
+                stats = (
+                    df.dropna(subset=["combined_forget_acc"])
+                    .groupby("train/step")["combined_forget_acc"]
+                    .mean()
+                    .reset_index()
+                    .sort_values("train/step")
+                )
+                ax_forget.plot(
+                    stats["train/step"], stats["combined_forget_acc"],
+                    color=cfg["color"], linestyle=cfg["linestyle"],
+                    linewidth=LINE_WIDTH, alpha=opacity,
+                )
+
+            seen_masks.add(mask_type)
 
     for ax, ylabel, subtitle in [
-        (ax_retain, "Accuracy (Retain)", "Accuracy on Retain Set"),
-        (ax_forget, "Accuracy (Forget)", "Accuracy on Forget Set"),
+        (ax_retain, "Accuracy on Retain Domain", "Accuracy on Retain Set"),
+        (ax_forget, "Accuracy on Forget Domain", "Accuracy on Forget Set"),
     ]:
         ax.set_xlabel("Training Steps", fontsize=13)
         ax.set_ylabel(ylabel, fontsize=13)
@@ -161,17 +179,34 @@ def create_config_figure(mask_type, display_name, runs_by_config, ts):
         ax.grid(True, linestyle="--", alpha=0.3)
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
-        ax.legend(title="Alpha", fontsize=10, title_fontsize=11,
-                  frameon=True, fancybox=True, edgecolor="0.8")
 
-    fig.suptitle(f"Distillation Training Curves: {display_name}",
-                 fontsize=16, fontweight="bold", y=1.02)
-    plt.tight_layout()
+    handles, labels = [], []
+    for mask_type in MASK_CONFIGS:
+        if mask_type not in seen_masks:
+            continue
+        cfg = MASK_CONFIGS[mask_type]
+        proxy = plt.Line2D([], [], color=cfg["color"], linestyle=cfg["linestyle"],
+                           linewidth=LINE_WIDTH, alpha=1.0)
+        handles.append(proxy)
+        labels.append(cfg["label"])
 
-    safe_mask = mask_type.replace("/", "_")
-    png_path = OUTPUT_DIR / f"distill_curves_{safe_mask}_{ts}.png"
+    fig.suptitle("Distillation Training Curves", fontsize=16)
+    fig.subplots_adjust(bottom=0.18, right=0.88, top=0.90)
 
-    plt.savefig(png_path, dpi=300, bbox_inches="tight")
+    fig.legend(handles, labels, frameon=False, fontsize=12,
+               loc="lower center", ncol=len(handles))
+
+    a_min, a_max = min(ALPHAS), max(ALPHAS)
+    norm = mcolors.Normalize(vmin=a_min, vmax=a_max)
+    sm = cm.ScalarMappable(cmap=cm.Blues, norm=norm)
+    sm.set_array([])
+    cax = fig.add_axes([0.91, 0.18, 0.02, 0.72])
+    cbar = fig.colorbar(sm, cax=cax)
+    cbar.set_label("α\n(line color opacity)", fontsize=14)
+    cbar.ax.tick_params(labelsize=10)
+
+    png_path = OUTPUT_DIR / f"distill_curves_{ts}.png"
+    plt.savefig(png_path, dpi=600, bbox_inches="tight")
     print(f"  [SUCCESS] Saved → {png_path}")
     plt.close()
 
@@ -185,12 +220,8 @@ def main():
 
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    print("\nGenerating figures...")
-    for mask_type, display_name in MASK_CONFIGS.items():
-        print(f"\n{'='*60}")
-        print(f"{display_name}")
-        print(f"{'='*60}")
-        create_config_figure(mask_type, display_name, runs_by_config, ts)
+    print("\nGenerating figure...")
+    create_combined_figure(runs_by_config, ts)
 
     print("\nDone!")
 

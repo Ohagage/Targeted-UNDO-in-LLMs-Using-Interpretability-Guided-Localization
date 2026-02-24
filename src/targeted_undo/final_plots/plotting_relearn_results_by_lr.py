@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 import datetime
 import numpy as np
 from pathlib import Path
@@ -213,9 +215,8 @@ def _plot_metric(groups_data, metric_col, ylabel, title, out_path):
     """Generic plotter used for both forget and retain figures."""
     fig, ax = plt.subplots(figsize=(14, 8))
 
-    label_to_handle = {}
+    seen_groups = set()
 
-    # Plot in config-defined order: group_configs first, then baselines
     for group_name in group_configs:
         for alpha_val in ALPHAS_TO_PROCESS:
             histories = groups_data.get((group_name, alpha_val), [])
@@ -228,15 +229,15 @@ def _plot_metric(groups_data, metric_col, ylabel, title, out_path):
 
             cfg = group_configs[group_name]
             opacity = alpha_to_opacity(alpha_val)
-            lbl = f"{group_name} (α={alpha_val})"
 
-            line, = ax.plot(
+            ax.plot(
                 stats["train/step"], stats["mean"],
                 color=cfg["color"], linestyle=cfg["linestyle"],
                 linewidth=LINE_WIDTH, alpha=opacity,
             )
-            label_to_handle[lbl] = line
+            seen_groups.add(group_name)
 
+    baseline_handles = {}
     for group_name in baseline_configs:
         histories = groups_data.get((group_name, None), [])
         if not histories:
@@ -252,7 +253,7 @@ def _plot_metric(groups_data, metric_col, ylabel, title, out_path):
             color=cfg["color"], linestyle=cfg["linestyle"],
             linewidth=LINE_WIDTH,
         )
-        label_to_handle[group_name] = line
+        baseline_handles[group_name] = line
 
     ax.set_xlabel("Training Steps on Forget Domain", fontsize=14)
     ax.set_ylabel(ylabel, fontsize=14)
@@ -262,12 +263,33 @@ def _plot_metric(groups_data, metric_col, ylabel, title, out_path):
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
-    handles = list(label_to_handle.values())
-    labels = list(label_to_handle.keys())
-    ax.legend(handles, labels, frameon=False, loc='upper left',
-              bbox_to_anchor=(1, 1), fontsize=10)
+    handles, labels = [], []
+    for group_name in group_configs:
+        if group_name not in seen_groups:
+            continue
+        cfg = group_configs[group_name]
+        proxy = plt.Line2D([], [], color=cfg["color"], linestyle=cfg["linestyle"],
+                           linewidth=LINE_WIDTH, alpha=1.0)
+        handles.append(proxy)
+        labels.append(group_name)
+    for name, line in baseline_handles.items():
+        handles.append(line)
+        labels.append(name)
 
-    fig.tight_layout()
+    fig.subplots_adjust(bottom=0.18, right=0.88, top=0.92)
+
+    fig.legend(handles, labels, frameon=False, fontsize=12,
+               loc="lower center", ncol=len(handles))
+
+    a_min, a_max = min(ALPHAS_TO_PROCESS), max(ALPHAS_TO_PROCESS)
+    norm = mcolors.Normalize(vmin=a_min, vmax=a_max)
+    sm = cm.ScalarMappable(cmap=cm.Blues, norm=norm)
+    sm.set_array([])
+    cax = fig.add_axes([0.91, 0.18, 0.02, 0.74])
+    cbar = fig.colorbar(sm, cax=cax)
+    cbar.set_label("α\n(line color opacity)", fontsize=14)
+    cbar.ax.tick_params(labelsize=10)
+
     fig.savefig(out_path, dpi=300, bbox_inches='tight')
     print(f"[SUCCESS] Saved plot → {out_path}")
     plt.close(fig)

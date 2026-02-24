@@ -20,7 +20,6 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
-from matplotlib.colorbar import ColorbarBase
 import numpy as np
 import datetime
 from pathlib import Path
@@ -64,17 +63,6 @@ def alpha_to_opacity(alpha_val):
         return 1.0
     t = (alpha_val - a_min) / (a_max - a_min)
     return 0.1 + 0.9 * t
-
-
-def make_alpha_cmap(hex_color, n=256):
-    """Colormap from white → hex_color, simulating alpha-over-white for the opacity range."""
-    r, g, b = mcolors.to_rgb(hex_color)
-    colors = []
-    for i in range(n):
-        t = i / (n - 1)
-        a = 0.1 + 0.9 * t
-        colors.append((a * r + (1 - a), a * g + (1 - a), a * b + (1 - a)))
-    return mcolors.LinearSegmentedColormap.from_list("custom", colors, N=n)
 
 
 def extract_lr_from_run(run):
@@ -317,28 +305,16 @@ def main():
     ax1.grid(True, linestyle="--", alpha=0.3)
     ax1.spines["top"].set_visible(False)
 
-    plt.tight_layout()
-    fig.subplots_adjust(right=0.82)
-
-    # Alpha colorbars – one per mask-type colour
+    # Alpha colorbar on the right side
     a_min, a_max = min(ALPHAS), max(ALPHAS)
     norm = mcolors.Normalize(vmin=a_min, vmax=a_max)
-    mask_order = [m for m in ["none", "binary", "snmf"] if m in seen_masks]
-    cbar_width = 0.018
-    cbar_gap = 0.006
-    cbar_x_start = 0.86
-    for i, mask in enumerate(mask_order):
-        cax = fig.add_axes([cbar_x_start + i * (cbar_width + cbar_gap),
-                            0.12, cbar_width, 0.72])
-        cmap = make_alpha_cmap(MASK_STYLES[mask]["color"])
-        cb_sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-        cb_sm.set_array([])
-        cb = fig.colorbar(cb_sm, cax=cax)
-        if i == len(mask_order) - 1:
-            cb.set_label("α", fontsize=14)
-            cb.ax.tick_params(labelsize=10)
-        else:
-            cb.ax.tick_params(labelleft=False, labelright=False, length=0)
+    sm = cm.ScalarMappable(cmap=cm.Blues, norm=norm)
+    sm.set_array([])
+    cbar = fig.colorbar(sm, ax=ax2, pad=0.12, aspect=30, shrink=0.8)
+    cbar.set_label("α\n(line color opacity)", fontsize=14)
+    cbar.ax.tick_params(labelsize=10)
+
+    plt.tight_layout()
 
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     outpath = OUTPUT_DIR / f"compute_tradeoff_arithmetic_{ts}.png"
