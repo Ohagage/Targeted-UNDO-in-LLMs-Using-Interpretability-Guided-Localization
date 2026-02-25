@@ -326,16 +326,30 @@ def main():
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
-    hdr = f"{'Alpha':<8}{'Mask':<10}{'Compute%':<10}{'Robust%':<10}{'P_worst':<10}{'S_undo':<8}{'#Runs':<6}"
+    name_w = max(len(MASK_STYLES.get(m, {}).get("label", m)) for m in df["mask_type"].unique()) + 2
+    hdr = f"{'Alpha':<8}{'Configuration':<{name_w}}{'Compute%':<10}{'Robust%':<10}{'P_worst':<10}{'S_undo':<8}{'#Runs':<6}"
     print(hdr)
     print("-" * len(hdr))
     for _, r in df.sort_values(["mask_type", "alpha"]).iterrows():
-        print(f"{r['alpha']:<8.1f}{r['mask_type']:<10}{r['compute']:<10.1f}"
+        label = MASK_STYLES.get(r["mask_type"], {}).get("label", r["mask_type"])
+        print(f"{r['alpha']:<8.1f}{label:<{name_w}}{r['compute']:<10.1f}"
               f"{r['robustness']:<10.1f}{r['P_worst']:<10.4f}{r['S_undo']:<8}{r['n_runs']:<6}")
     print("-" * len(hdr))
     print(f"P_UnlearnOnly   = {P_uo:.4f}")
     print(f"P_DataFiltering = {P_df:.4f}")
     print(f"S_DataFiltering = {S_df}")
+
+    # ------ Save table to CSV ------
+    table_df = df.sort_values(["mask_type", "alpha"]).copy()
+    table_df["Configuration"] = table_df["mask_type"].map(
+        lambda m: MASK_STYLES.get(m, {}).get("label", m)
+    )
+    table_df = table_df[["alpha", "Configuration", "compute", "robustness",
+                         "robustness_mean", "robustness_std",
+                         "P_worst", "P_mean", "S_undo", "n_runs"]]
+    csv_path = OUTPUT_DIR / f"compute_tradeoff_table_{ts}.csv"
+    table_df.to_csv(csv_path, index=False)
+    print(f"\n[SUCCESS] Saved table → {csv_path}")
 
 
 if __name__ == "__main__":
