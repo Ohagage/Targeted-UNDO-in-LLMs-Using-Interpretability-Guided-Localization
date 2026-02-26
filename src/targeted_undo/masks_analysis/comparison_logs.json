@@ -1,0 +1,127 @@
+{
+    "Baseline": {
+        "val/eng_ce_loss": 4.541007821615504,
+        "val/wiki_eval_time": 150.7161626815796,
+        "val/subtraction_equation_acc": 0.97,
+        "val/subtraction_word_problem_acc": 0.93,
+        "val/addition_equation_acc": 0.74,
+        "val/addition_word_problem_acc": 0.84,
+        "val/multiplication_equation_acc": 0.84,
+        "val/multiplication_word_problem_acc": 0.7,
+        "val/division_equation_acc": 0.97,
+        "val/division_word_problem_acc": 0.7,
+        "val/arithmetic_eval_time": 37.46394205093384
+    },
+    "SNMF": {
+        "targeted": {
+            "val/eng_ce_loss": 7.651228416113206,
+            "val/wiki_eval_time": 149.15174913406372,
+            "val/subtraction_equation_acc": 0.0,
+            "val/subtraction_word_problem_acc": 0.0,
+            "val/addition_equation_acc": 0.0,
+            "val/addition_word_problem_acc": 0.0,
+            "val/multiplication_equation_acc": 0.0,
+            "val/multiplication_word_problem_acc": 0.0,
+            "val/division_equation_acc": 0.0,
+            "val/division_word_problem_acc": 0.0,
+            "val/arithmetic_eval_time": 37.23603081703186
+        },
+        "random_trials": [
+            {
+                "val/eng_ce_loss": 5.021713202545836,
+                "val/wiki_eval_time": 146.29358100891113,
+                "val/subtraction_equation_acc": 0.14,
+                "val/subtraction_word_problem_acc": 0.07,
+                "val/addition_equation_acc": 0.03,
+                "val/addition_word_problem_acc": 0.05,
+                "val/multiplication_equation_acc": 0.08,
+                "val/multiplication_word_problem_acc": 0.04,
+                "val/division_equation_acc": 0.06,
+                "val/division_word_problem_acc": 0.19,
+                "val/arithmetic_eval_time": 34.24026298522949
+            },
+            {
+                "val/eng_ce_loss": 4.944909700150353,
+                "val/wiki_eval_time": 156.54882836341858,
+                "val/subtraction_equation_acc": 0.11,
+                "val/subtraction_word_problem_acc": 0.12,
+                "val/addition_equation_acc": 0.03,
+                "val/addition_word_problem_acc": 0.04,
+                "val/multiplication_equation_acc": 0.05,
+                "val/multiplication_word_problem_acc": 0.1,
+                "val/division_equation_acc": 0.21,
+                "val/division_word_problem_acc": 0.11,
+                "val/arithmetic_eval_time": 35.11587977409363
+            },
+            {
+                "val/eng_ce_loss": 5.0004094010027345,
+                "val/wiki_eval_time": 159.65572905540466,
+                "val/subtraction_equation_acc": 0.25,
+                "val/subtraction_word_problem_acc": 0.07,
+                "val/addition_equation_acc": 0.16,
+                "val/addition_word_problem_acc": 0.1,
+                "val/multiplication_equation_acc": 0.11,
+                "val/multiplication_word_problem_acc": 0.03,
+                "val/division_equation_acc": 0.18,
+                "val/division_word_problem_acc": 0.06,
+                "val/arithmetic_eval_time": 39.872803688049316
+            }
+        ]
+    },
+    "Delta": {
+        "targeted": {
+            "val/eng_ce_loss": 4.600990481827975,
+            "val/wiki_eval_time": 148.69500994682312,
+            "val/subtraction_equation_acc": 0.79,
+            "val/subtraction_word_problem_acc": 0.68,
+            "val/addition_equation_acc": 0.46,
+            "val/addition_word_problem_acc": 0.67,
+            "val/multiplication_equation_acc": 0.54,
+            "val/multiplication_word_problem_acc": 0.52,
+            "val/division_equation_acc": 0.72,
+            "val/division_word_problem_acc": 0.45,
+            "val/arithmetic_eval_time": 37.0651171207428
+        },
+        "random_trials": [
+            {
+                "val/eng_ce_loss": 4.770396874274737,
+                "val/wiki_eval_time": 150.68291902542114,
+                "val/subtraction_equation_acc": 0.5,
+                "val/subtraction_word_problem_acc": 0.26,
+                "val/addition_equation_acc": 0.23,
+                "val/addition_word_problem_acc": 0.41,
+                "val/multiplication_equation_acc": 0.2,
+                "val/multiplication_word_problem_acc": 0.2,
+                "val/division_equation_acc": 0.5,
+                "val/division_word_problem_acc": 0.32,
+                "val/arithmetic_eval_time": 38.03244209289551
+            },
+            {
+                "val/eng_ce_loss": 4.74870919461767,
+                "val/wiki_eval_time": 151.82926106452942,
+                "val/subtraction_equation_acc": 0.46,
+                "val/subtraction_word_problem_acc": 0.28,
+                "val/addition_equation_acc": 0.15,
+                "val/addition_word_problem_acc": 0.24,
+                "val/multiplication_equation_acc": 0.18,
+                "val/multiplication_word_problem_acc": 0.19,
+                "val/division_equation_acc": 0.38,
+                "val/division_word_problem_acc": 0.28,
+                "val/arithmetic_eval_time": 39.756821155548096
+            },
+            {
+                "val/eng_ce_loss": 4.7520074857442305,
+                "val/wiki_eval_time": 159.23006892204285,
+                "val/subtraction_equation_acc": 0.52,
+                "val/subtraction_word_problem_acc": 0.43,
+                "val/addition_equation_acc": 0.31,
+                "val/addition_word_problem_acc": 0.36,
+                "val/multiplication_equation_acc": 0.36,
+                "val/multiplication_word_problem_acc": 0.19,
+                "val/division_equation_acc": 0.42,
+                "val/division_word_problem_acc": 0.31,
+                "val/arithmetic_eval_time": 42.785012006759644
+            }
+        ]
+    }
+}
