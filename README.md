@@ -1,6 +1,6 @@
 # Targeted-UNDO: Interpretability-Guided Unlearning in LLMs 🧠🛡️
 
-This repository contains the implementation of Targeted-UNDO, based on the [UNDO](https://github.com/AddieFoote/distillation-robustify-unlearning) framework. This project was developed as part of the [Interpretability of Large Language Models](https://github.com/mega002/llm-interp-tau) course at Tel Aviv University, Fall 2025/2026.
+This repository contains the implementation of Targeted-UNDO, based on the [UNDO](https://github.com/AddieFoote/distillation-robustify-unlearning) framework. It also uses the [SNMF](https://github.com/ordavid-s/snmf-mlp-decomposition/tree/main) codebase. This project was developed as part of the [Interpretability of Large Language Models](https://github.com/mega002/llm-interp-tau) course at Tel Aviv University, Fall 2025/2026.
 ## Overview 📖
 Our goal is to enhance the **UNDO** (Unlearn-Noise-Distill-on-Outputs) method by incorporating mechanistic interpretability to localize specific knowledge for more focused noise in the Noise step.
 
