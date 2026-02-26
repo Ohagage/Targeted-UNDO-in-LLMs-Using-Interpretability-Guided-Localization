@@ -7,13 +7,19 @@ import datetime
 import numpy as np
 from pathlib import Path
 from collections import defaultdict
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # Output lives alongside this script
 OUTPUT_DIR = Path(__file__).parent / Path(__file__).stem
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ================= CONSTANTS =================
-WANDB_KEY = "8b80f738391c946f3c8b26d878a282cbf763ff78"
+wandb_key = os.getenv("WANDB_API_KEY")
+if not wandb_key:
+    raise ValueError("WANDB_API_KEY not found. Please create a .env file with your API key.")
 PROJECT_PATH = "hagage-tel-aviv-university/gemma-2-0.1B_relearn_only_forget"
 
 ALPHAS_TO_PROCESS = [0.1, 0.3, 0.6, 0.9, 1.0]
@@ -34,7 +40,7 @@ RETAIN_COLS = [
 ALL_METRIC_COLS = FORGET_COLS + RETAIN_COLS
 # =============================================
 
-wandb.login(key=WANDB_KEY)
+wandb.login(key=wandb_key)
 api = wandb.Api()
 
 # One base colour per group config; alpha-value controls opacity

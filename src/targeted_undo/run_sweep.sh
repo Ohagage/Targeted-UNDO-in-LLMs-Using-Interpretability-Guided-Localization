@@ -14,11 +14,20 @@
 # Environment Setup
 # ============================================================
 export HF_HOME="/home/ADV_2526a/rashkovits/distillation-robustify-unlearning-copy/.hf-cache"
-export WANDB_API_KEY=8b80f738391c946f3c8b26d878a282cbf763ff78
 export PYTHONUNBUFFERED=1
-
 export PYTHONPATH=$PYTHONPATH:/home/ADV_2526a/rashkovits/distillation-robustify-unlearning-copy
 
+# Load environment variables from .env file if it exists
+# This securely loads your WANDB_API_KEY
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+    echo "Successfully loaded environment variables from .env"
+else
+    echo "Error: .env file not found. Please create one with WANDB_API_KEY."
+    exit 1
+fi
+
+# Create necessary directories
 mkdir -p logs .hf-cache
 
 # ============================================================
@@ -28,6 +37,9 @@ mkdir -p logs .hf-cache
 echo "Starting Parallel Distillation Sweep..."
 echo "Mask Type: ${1:-relative}"
 
-/home/ADV_2526a/rashkovits/distillation-robustify-unlearning-copy/env/bin/python run_partial_distill_arithmetic.py --run_all --mask_type ${1:-relative}
+/home/ADV_2526a/rashkovits/distillation-robustify-unlearning-copy/env/bin/python \
+    run_partial_distill_arithmetic.py \
+    --run_all \
+    --mask_type ${1:-relative}
 
 echo "Sweep completed at $(date)"

@@ -24,9 +24,15 @@ from matplotlib.colorbar import ColorbarBase
 import numpy as np
 import datetime
 from pathlib import Path
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # ========================= CONFIGURATION =========================
-WANDB_KEY = "8b80f738391c946f3c8b26d878a282cbf763ff78"
+wandb_key = os.getenv("WANDB_API_KEY")
+if not wandb_key:
+    raise ValueError("WANDB_API_KEY not found. Please create a .env file with your API key.")
 WANDB_ENTITY = "hagage-tel-aviv-university"
 
 RELEARN_PROJECT = f"{WANDB_ENTITY}/gemma-2-0.1B_relearn_only_forget"
@@ -159,7 +165,7 @@ def get_oracle_pretrain_steps(api, project):
 
 # ========================= MAIN =========================
 def main():
-    wandb.login(key=WANDB_KEY)
+    wandb.login(key=wandb_key)
     api = wandb.Api()
 
     # 1. Oracle pretraining steps

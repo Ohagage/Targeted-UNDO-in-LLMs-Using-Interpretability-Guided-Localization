@@ -2,10 +2,15 @@ import wandb
 import pandas as pd
 import matplotlib.pyplot as plt
 import datetime
-import json
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # ================= CONSTANTS =================
-WANDB_KEY = "8b80f738391c946f3c8b26d878a282cbf763ff78"
+wandb_key = os.getenv("WANDB_API_KEY")
+if not wandb_key:
+    raise ValueError("WANDB_API_KEY not found. Please create a .env file with your API key.")
 PROJECT_PATH = "hagage-tel-aviv-university/gemma-2-0.1B_relearn_only_forget"
 
 # List of mixing coefficients to iterate through

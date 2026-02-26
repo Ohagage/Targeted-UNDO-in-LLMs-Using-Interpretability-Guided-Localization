@@ -12,9 +12,15 @@ import wandb
 import pandas as pd
 import datetime
 from pathlib import Path
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # ========================= CONFIGURATION =========================
-WANDB_KEY = "8b80f738391c946f3c8b26d878a282cbf763ff78"
+wandb_key = os.getenv("WANDB_API_KEY")
+if not wandb_key:
+    raise ValueError("WANDB_API_KEY not found. Please create a .env file with your API key.")
 WANDB_ENTITY = "hagage-tel-aviv-university"
 
 DISTILL_PROJECT = f"{WANDB_ENTITY}/gemma-2-0.1B_MaxEnt_lr_7e-05_partial_distill"
@@ -76,7 +82,7 @@ def get_pretrain_steps(api, project):
 
 
 def main():
-    wandb.login(key=WANDB_KEY)
+    wandb.login(key=wandb_key)
     api = wandb.Api()
 
     # --- Oracle (Data Filtering) pretraining steps ---

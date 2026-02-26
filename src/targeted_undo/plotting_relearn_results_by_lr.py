@@ -4,10 +4,12 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import datetime
-import json
 import os
 from pathlib import Path
 from collections import defaultdict
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Get the script name (without .py) for output directory
 SCRIPT_NAME = Path(__file__).stem
@@ -17,7 +19,9 @@ OUTPUT_DIR = Path(__file__).parent / SCRIPT_NAME
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # ================= CONSTANTS =================
-WANDB_KEY = "8b80f738391c946f3c8b26d878a282cbf763ff78"
+wandb_key = os.getenv("WANDB_API_KEY")
+if not wandb_key:
+    raise ValueError("WANDB_API_KEY not found. Please create a .env file with your API key.")
 PROJECT_PATH = "hagage-tel-aviv-university/gemma-2-0.1B_relearn_only_forget"
 
 # List of mixing coefficients to iterate through

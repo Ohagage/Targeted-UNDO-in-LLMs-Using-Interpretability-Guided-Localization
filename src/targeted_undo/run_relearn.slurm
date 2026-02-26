@@ -13,18 +13,26 @@
 # ============================================================
 # Environment Setup
 # ============================================================
-# Define the project root for consistency
 PROJECT_ROOT="/home/ADV_2526a/rashkovits/distillation-robustify-unlearning-copy"
 
+cd "$PROJECT_ROOT" || exit
+
+# Load environment variables from .env file
+# This replaces the hardcoded WANDB_API_KEY
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+    echo "Successfully loaded environment variables from .env"
+else
+    echo "Error: .env file not found. Please create one with your WANDB_API_KEY."
+    exit 1
+fi
+
+# Set environment variables
 export HF_HOME="$PROJECT_ROOT/.hf-cache"
-export WANDB_API_KEY=8b80f738391c946f3c8b26d878a282cbf763ff78
 export PYTHONUNBUFFERED=1
 export PYTHONPATH=$PYTHONPATH:$PROJECT_ROOT
 
-# Navigate to the project directory so Python finds your local modules
-cd $PROJECT_ROOT
-
-# Create necessary directories for logs and results
+# Create necessary directories for logs, cache, and results
 mkdir -p logs .hf-cache
 mkdir -p models/non-wmdp/relearned_models
 mkdir -p models/non-wmdp/local_records/relearned_models
@@ -37,7 +45,6 @@ echo "Starting Parallel Relearning Experiment..."
 echo "Working Directory: $(pwd)"
 echo "Start time: $(date)"
 
-# Execute using the specific environment's python
-$PROJECT_ROOT/env/bin/python run_relearn_arithmetic.py
+"$PROJECT_ROOT/env/bin/python" run_relearn_arithmetic.py
 
 echo "Relearning experiment completed at $(date)"
