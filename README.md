@@ -4,42 +4,43 @@ This repository contains the implementation of Targeted-UNDO, based on the [UNDO
 ## Overview 📖
 Our goal is to enhance the **UNDO** (Unlearn-Noise-Distill-on-Outputs) method by incorporating mechanistic interpretability to localize specific knowledge for more focused noise in the Noise step.
 
-![Pipeline Section](assets/poster_pipeline_section.jpeg)
+![Pipeline Section](assets/pipeline.jpg)
 
 This project is based on the framework introduced in the paper:
 > **[Distillation Robustifies Unlearning](https://arxiv.org/abs/2506.06278)** (2025)
 
-## Motivation 🚀
-Standard unlearning methods often keep the knowledge internally, and only suppress the behavior. Thus, they are sensitive to relearning attacks, where the model can quickly regain the forgotten knowledge. The UNDO method addresses this by applying noise to the entire model, followed by distillation to retain useful capabilities. However, this approach involves an expensive process of distillation since the student is entirely randomly initialized, thus forgetting also the knowledge we want to retain. This research aims to refine the UNDO method by localizing the unlearning process, reducing the need for extensive distillation, improving the compute-unlearning robustness trade-off. This project creates parameters mask based on mechanistic interpretability methods, such as utilizing the Unlearning logic or SMNF (Semi-Nonnegative Matrix
-Factorization).
+## Abstract
+Standard LLM unlearning methods often yield superficial behavioral suppression, leaving latent knowledge circuits intact and vulnerable to rapid restoration via finetuning. The UNDO framework improves robustness by distilling an unlearned teacher into a copy of globally noised student. However, uniform parameter corruption incurs substantial collateral damage, increasing recovery compute. We propose \textbf{Localized-UNDO} (L-UNDO), which employs a more general noise formula to leverage mechanistic interpretability, allowing for the concentration of noise on specific forget-related parameters. We evaluate this framework using two complementary localization strategies: (1) Delta-based weight discrepancy masking, which identifies structural shifts occurring during behavioral unlearning, and (2) activation-based Sparse Non-negative Matrix Factorization (SNMF), which isolates task-specific feature directions within MLP sub-layers.
+In the arithmetic domain (targeting multiplication and division), L-UNDO achieves meaningful robustness gains over standard unlearning at substantially lower distillation compute compared to global UNDO. Our results demonstrate that targeted structural corruption can shift the compute--robustness Pareto frontier. We argue that improved localization precision is key to scalable and robust capability removal, positioning mechanistic interpretability as a practical tool for safe model deployment.
 
-<img src="assets/poster_trade_off_section.jpeg" width="75%" alt="trade-off">
+<img src="assets/compute_robustness_trade_off.jpeg" width="75%" alt="trade-off">
 
 ## Key Features 🛠️
-* **Localization Pipeline**: Mapping harmful concepts from the **arithmetic dataset** to specific model features using SMNF / (base model - unlearned model) parameters.
+* **Localization Pipeline**: Mapping harmful concepts from the **arithmetic dataset** to specific model features using SMNF / Delta via weight discrepancy localization methods.
 * **Targeted Noise Injection**: A refined UNDO step that applies noise to localized components rather than the entire model.
-* **Comparative Evaluation**: Benchmarking against global UNDO and classic unlearning methods on both *forget* (Multiplication/Division) and *retain* (Addition/Subtraction) sets.
+* **Comparative Evaluation**: Benchmarking against global UNDO, MaxEnt Unlearn Only and Oracle models.
 
-![Experiment Setup](assets/poster_setup_section.jpeg)
+![Experiment Setup](assets/arithmetic_settings.jpeg)
 
 ## Project Structure 📁
-* `/src`: Core implementation of Targeted-UNDO and localization scripts.
-* `/notebooks`: Exploratory analysis of features and masks.
-* `/results`: Evaluation metrics, plots, and logs.
+* `/src/vendor`: UNDO codebase adapted from the original repository.
+* `src/snmf-mlp-decomposition`: SNMF codebase adjusted for custom model and for mask construction.
+* `src/targeted_undo`: Code for all of our scripts related to the localization pipeline, targeted noise injection, and evaluation.
+* 
 
 ## Setup & Installation ⚙️
 *(We should update it by our progress)*
 
 1.  **Clone the repository**:
     ```bash
-    git clone <repo-url>
+    git clone git@github.com:Ohagage/Targeted-UNDO-in-LLMs-Using-Interpretability-Guided-Localization.git
     ```
 2.  **Install dependencies**:
     ```bash
     pip install -r requirements.txt
     ```
     
-## Related Work
+## Theoretical Framework & Analysis
 The theoretical framework and full analysis of this project can be found in our working paper on [Overleaf](https://www.overleaf.com/read/xbnkxpxwydhf#4e2c79).
 
 ## Team 👥
