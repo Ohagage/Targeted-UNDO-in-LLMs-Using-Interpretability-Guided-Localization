@@ -39,7 +39,9 @@ In the arithmetic domain (targeting multiplication and division), L-UNDO achieve
     ```bash
     pip install -r requirements.txt
     ```
-    
+3. This project uses Weights & Biases for logging and tracking experiments. To run the training and evaluation scripts, you must provide your API key via a .env file:
+    - Create a file named .env in the root directory. 
+    - Add your W&B API key: WANDB_API_KEY=your_api_key_here
 ## Theoretical Framework & Analysis
 The theoretical framework and full analysis of this project can be found in our working paper on [Overleaf](https://www.overleaf.com/read/xbnkxpxwydhf#4e2c79).
 
