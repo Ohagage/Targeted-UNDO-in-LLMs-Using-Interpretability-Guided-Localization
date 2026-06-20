@@ -385,6 +385,81 @@ def run_snmf(
 
 
 # ------------------------------
+# Token Subsampling for Balanced Concepts
+# ------------------------------
+def subsample_balanced(
+    activations: torch.Tensor,
+    sample_ids: List[int],
+    token_ids: List[int],
+    labels: List[str],
+    max_tokens_per_concept: int,
+    seed: int = 42,
+) -> Tuple[torch.Tensor, List[int], List[int]]:
+    """
+    Subsample tokens so each concept has at most max_tokens_per_concept.
+    
+    This balances the dataset to prevent SNMF from being biased toward
+    concepts with more tokens (e.g., English has ~60x more tokens than
+    arithmetic symbolic expressions).
+    
+    Args:
+        activations: (n_tokens, d_activation)
+        sample_ids: list mapping token_idx -> sample_idx
+        token_ids: list of token IDs
+        labels: list mapping sample_idx -> concept
+        max_tokens_per_concept: max tokens to keep per concept
+        seed: random seed for reproducibility
+        
+    Returns:
+        (subsampled_activations, subsampled_sample_ids, subsampled_token_ids)
+    """
+    rng = random.Random(seed)
+    
+    # Group token indices by concept
+    concept_to_tokens: Dict[str, List[int]] = {}
+    for t_idx, s_idx in enumerate(sample_ids):
+        concept = labels[s_idx]
+        if concept not in concept_to_tokens:
+            concept_to_tokens[concept] = []
+        concept_to_tokens[concept].append(t_idx)
+    
+    # Log original distribution
+    log(f"Token distribution before subsampling:")
+    for concept in sorted(concept_to_tokens.keys()):
+        log(f"  {concept}: {len(concept_to_tokens[concept])} tokens")
+    
+    # Subsample each concept
+    keep_indices = []
+    for concept, indices in concept_to_tokens.items():
+        if len(indices) > max_tokens_per_concept:
+            sampled = rng.sample(indices, max_tokens_per_concept)
+        else:
+            sampled = indices
+        keep_indices.extend(sampled)
+    
+    # Sort to maintain order
+    keep_indices = sorted(keep_indices)
+    
+    # Subset the data
+    new_activations = activations[keep_indices]
+    new_sample_ids = [sample_ids[i] for i in keep_indices]
+    new_token_ids = [token_ids[i] for i in keep_indices]
+    
+    # Log new distribution
+    log(f"Token distribution after subsampling (max {max_tokens_per_concept} per concept):")
+    new_concept_counts: Dict[str, int] = {}
+    for s_idx in new_sample_ids:
+        concept = labels[s_idx]
+        new_concept_counts[concept] = new_concept_counts.get(concept, 0) + 1
+    for concept in sorted(new_concept_counts.keys()):
+        log(f"  {concept}: {new_concept_counts[concept]} tokens")
+    
+    log(f"Subsampled: {len(activations)} -> {len(new_activations)} tokens")
+    
+    return new_activations, new_sample_ids, new_token_ids
+
+
+# ------------------------------
 # Feature Analysis (Supervised - with labels)
 # ------------------------------
 def analyze_features_supervised(
@@ -660,6 +735,12 @@ def main():
     parser.add_argument("--no-save-raw", dest="save_raw", action="store_false",
                         help="Don't save raw token data (smaller output files)")
     
+    # Subsampling configuration
+    parser.add_argument("--max-tokens-per-concept", type=int, default=None,
+                        help="Subsample to this many tokens per concept to balance dataset. "
+                             "Useful when concepts have very different token counts (e.g., "
+                             "English ~191k tokens vs arithmetic ~3k tokens). Default: no limit")
+    
     args = parser.parse_args()
     
     # Parse layers
@@ -696,6 +777,10 @@ def main():
     log(f"  Rank: {args.rank}")
     log(f"  Mode: {args.mode}")
     log(f"  Device: {device}")
+    if args.max_tokens_per_concept:
+        log(f"  Max tokens per concept: {args.max_tokens_per_concept} (balanced)")
+    else:
+        log(f"  Max tokens per concept: unlimited")
     log("=" * 60)
     
     # Load model
@@ -718,9 +803,24 @@ def main():
         
         activations = activations_per_layer[layer_idx]
         
+        # Apply subsampling if requested (balance concepts)
+        if args.max_tokens_per_concept:
+            activations_for_snmf, sample_ids_for_snmf, token_ids_for_snmf = subsample_balanced(
+                activations,
+                sample_ids,
+                token_ids,
+                labels,
+                max_tokens_per_concept=args.max_tokens_per_concept,
+                seed=args.seed,
+            )
+        else:
+            activations_for_snmf = activations
+            sample_ids_for_snmf = sample_ids
+            token_ids_for_snmf = token_ids
+        
         # Run SNMF
         F, G = run_snmf(
-            activations,
+            activations_for_snmf,
             rank=args.rank,
             device=device,
             sparsity=args.sparsity,
@@ -731,8 +831,8 @@ def main():
         
         # Analyze features (supervised - with labels)
         supervised_analysis = analyze_features_supervised(
-            G, labels, sample_ids,
-            token_ids=token_ids,
+            G, labels, sample_ids_for_snmf,
+            token_ids=token_ids_for_snmf,
             tokenizer=model.tokenizer,
             top_k=args.top_k_analysis,
             dominance_threshold=args.dominance_threshold,
@@ -756,8 +856,8 @@ def main():
         torch.save({
             'F': F,
             'G': G,
-            'token_ids': token_ids,
-            'sample_ids': sample_ids,
+            'token_ids': token_ids_for_snmf,
+            'sample_ids': sample_ids_for_snmf,
         }, layer_output / "snmf_factors.pt")
         
         # Save supervised analysis
@@ -786,7 +886,10 @@ def main():
         'sparsity': args.sparsity,
         'mode': args.mode,
         'num_samples': len(prompts),
-        'num_tokens': len(token_ids),
+        'num_tokens_original': len(token_ids),
+        'num_tokens_used': len(token_ids_for_snmf) if args.max_tokens_per_concept else len(token_ids),
+        'max_tokens_per_concept': args.max_tokens_per_concept,
+        'balanced_subsampling': args.max_tokens_per_concept is not None,
         'dominance_threshold': args.dominance_threshold,
         'top_k_analysis': args.top_k_analysis,
         'vocab_projection_enabled': not args.skip_vocab_projection,

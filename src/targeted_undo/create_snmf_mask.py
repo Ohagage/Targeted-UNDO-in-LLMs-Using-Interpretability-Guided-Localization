@@ -3,7 +3,13 @@
 Create parameter masks based on SNMF feature analysis.
 
 This script identifies features associated with specific concepts (e.g., division, multiplication)
-and creates masks to zero out the corresponding model parameters.
+and creates masks targeting the corresponding model parameters.
+
+Output format (as saved to .pt file):
+    - 1 = target this neuron for ablation
+    - 0 = keep this neuron unchanged
+    
+Note: When using with param *= mask, invert first: mask = 1 - mask
 
 Usage:
     python -m src.targeted_undo.create_snmf_mask \
@@ -145,14 +151,28 @@ def get_active_neurons(F: torch.Tensor, feature_indices: List[int],
     """
     active_neurons = set()
     
+    # Minimum value to consider a neuron "active" (avoid selecting zeros)
+    MIN_ACTIVATION = 1e-6
+    
     for feat_idx in feature_indices:
         feature_vec = F[:, feat_idx].abs()
         
+        # Only consider neurons with non-negligible values
+        nonzero_mask = feature_vec > MIN_ACTIVATION
+        nonzero_count = nonzero_mask.sum().item()
+        
+        if nonzero_count == 0:
+            continue
+        
         if method == "relative":
-            # Top threshold% of neurons
-            k = max(1, int(threshold * len(feature_vec)))
-            _, top_indices = torch.topk(feature_vec, k)
-            active_neurons.update(top_indices.tolist())
+            # Top threshold% of NON-ZERO neurons only
+            k = max(1, int(threshold * nonzero_count))
+            # Get top-k from the full vector, but filter to non-zero only
+            _, top_indices = torch.topk(feature_vec, min(k, nonzero_count))
+            # Only include indices that actually have non-zero values
+            for idx in top_indices.tolist():
+                if feature_vec[idx] > MIN_ACTIVATION:
+                    active_neurons.add(idx)
         else:
             # Neurons above absolute threshold
             max_val = feature_vec.max()
@@ -169,7 +189,7 @@ def create_mlp_mask(
     mode: str = "mlp"
 ) -> Dict[str, torch.Tensor]:
     """
-    Create masks for MLP parameters.
+    Create masks for MLP parameters in partial_distill format.
     
     For mode="mlp" (320d output):
         - Mask applies to down_proj output dimensions
@@ -177,7 +197,9 @@ def create_mlp_mask(
         - Active neurons correspond to hidden_size dimension (rows)
     
     Returns:
-        Dictionary mapping parameter names to mask tensors (1=keep, 0=remove)
+        Dictionary mapping parameter names to mask tensors.
+        Format: 1 = target for ablation, 0 = keep unchanged
+        Note: Invert (1-mask) before using with param *= mask
     """
     hidden_size = model_config['hidden_size']
     intermediate_size = model_config['intermediate_size']
@@ -189,15 +211,16 @@ def create_mlp_mask(
         active_neurons = active_neurons_per_layer.get(layer, set())
         
         if not active_neurons:
-            # No active neurons for this layer - keep everything
+            # No active neurons for this layer - no intervention needed
             continue
         
         # Create mask for down_proj (hidden_size, intermediate_size)
         # Active neurons are in the output dimension (rows)
-        down_proj_mask = torch.ones(hidden_size, intermediate_size)
+        # partial_distill format: 1 = apply noise, 0 = keep unchanged
+        down_proj_mask = torch.zeros(hidden_size, intermediate_size)
         for neuron in active_neurons:
             if neuron < hidden_size:
-                down_proj_mask[neuron, :] = 0  # Zero out this row
+                down_proj_mask[neuron, :] = 1  # Target this row for intervention
         
         masks[f"model.layers.{layer}.mlp.down_proj.weight"] = down_proj_mask
         
@@ -368,17 +391,17 @@ def main():
     
     # Calculate mask statistics
     total_params = 0
-    masked_params = 0
+    targeted_params = 0
     
     for name, mask in masks.items():
         total_params += mask.numel()
-        masked_params += (mask == 0).sum().item()
+        targeted_params += (mask == 1).sum().item()
     
     if total_params > 0:
-        print(f"Mask statistics:")
+        print(f"Mask statistics (partial_distill format: 1=target, 0=keep):")
         print(f"  Parameters covered: {total_params:,}")
-        print(f"  Parameters masked (set to 0): {masked_params:,}")
-        print(f"  Percentage masked: {100 * masked_params / total_params:.2f}%")
+        print(f"  Parameters targeted (mask=1): {targeted_params:,}")
+        print(f"  Percentage targeted: {100 * targeted_params / total_params:.2f}%")
     
     # Save masks
     output_path = Path(args.output_path)
